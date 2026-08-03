@@ -1,0 +1,328 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Design tokens — Portfolio Tracker "ledger, not dashboard"
+   Source: Portfolio_Tracker_Design_Prompt.md §1
+   No hex value may appear in a component (§10). Everything routes through here.
+   ========================================================================== */
+
+@theme {
+  /* --- §1.1 Palette ------------------------------------------------------ */
+  --color-paper: #efede4; /* page background, dulled bone */
+  --color-paper-raised: #f7f5ee; /* inputs + surfaces; the ONLY elevation cue */
+  --color-ink: #1b2a3a; /* primary text, rules, primary buttons */
+  --color-ink-soft: #57616e; /* secondary text, captions, inactive nav */
+  --color-brass: #b08d3e; /* accent: stamp, active states, mutual funds */
+  --color-ledger-green: #2f5d45; /* positive, growth, emergency fund */
+  --color-ledger-red: #9c3b2e; /* negative, over-target, crypto */
+  --color-slate: #5b7a8c; /* t-bills, focus rings, under-target */
+  --color-rule: #d9d4c4; /* hairline dividers and table rules */
+
+  /* Contrast-safe companions. §9 asks that tokens be verified against the final
+     background hex and darkened if they miss — these are the results of
+     scripts/check-contrast.mjs, not guesses.
+
+       --brass  #B08D3E  2.66:1 on paper — fails even the 3:1 graphical bar
+       --slate  #5B7A8C  3.89:1 on paper — passes 3:1, fails 4.5:1 for text
+
+     So each keeps its original token for large chart fills (where §9's
+     "never colour alone" rule means a text label always carries the meaning
+     too) and gains a deeper companion for anywhere it carries text. */
+  --color-brass-deep: #7d6329; /* 4.85:1 on paper — stamp, button hover fill */
+  --color-slate-deep: #536f7f; /* 4.53:1 on paper — under-target badge text */
+
+  /* --- §1.2 Typefaces ---------------------------------------------------- */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-plex-sans), system-ui, sans-serif;
+  --font-data: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* --- §1.3 Spacing: base unit 8px --------------------------------------- */
+  --spacing: 8px;
+
+  /* --- §1.4 Radius -------------------------------------------------------- */
+  --radius-soft: 2px; /* inputs, buttons, stamp badge, variance pill */
+  --radius-page: 0px; /* tables + page containers stay sharp */
+
+  /* --- §1.6 Motion -------------------------------------------------------- */
+  --ease-confident: cubic-bezier(0.2, 0, 0, 1);
+  --duration-hover: 120ms;
+  --duration-panel: 240ms;
+  --duration-signature: 400ms;
+
+  /* --- §8.1 Breakpoints — the ONLY breakpoints in the system -------------- */
+  --breakpoint-mobile-sm: 480px;
+  --breakpoint-mobile: 768px;
+  --breakpoint-tablet: 1024px;
+}
+
+/* ============================================================================
+   §1.2 + §8.3 Type scale
+   Defined as plain custom properties (not @theme) so the mobile step-down in
+   §8.3 can override them at a breakpoint. Only display roles shrink; body and
+   data roles are unchanged, per the spec.
+   ========================================================================== */
+
+:root {
+  --type-display-xl: 3.5rem;
+  --type-display-xl-lh: 1.05;
+  --type-display-lg: 2.25rem;
+  --type-display-lg-lh: 1.1;
+  --type-display-md: 1.5rem;
+  --type-display-md-lh: 1.2;
+
+  --type-body-lg: 1.125rem;
+  --type-body-lg-lh: 1.5;
+  --type-body: 1rem;
+  --type-body-lh: 1.5;
+  --type-body-sm: 0.875rem;
+  --type-body-sm-lh: 1.4;
+
+  --type-data-lg: 1.75rem;
+  --type-data-lg-lh: 1.2;
+  --type-data: 1rem;
+  --type-data-lh: 1.4;
+  --type-data-sm: 0.8125rem;
+  --type-data-sm-lh: 1.3;
+
+  /* §4 tolerance band for target drift, in percentage points */
+  --variance-tolerance: 5;
+}
+
+/* §8.3 — desktop sizes are tuned for a 1200px canvas and are too large on a
+   phone. Step display roles down one level below --bp-mobile. */
+@media (max-width: 767px) {
+  :root {
+    --type-display-xl: 2.25rem;
+    --type-display-lg: 1.5rem;
+    --type-display-md: 1.25rem;
+    --type-data-lg: 1.375rem;
+  }
+}
+
+/* ============================================================================
+   Base
+   ========================================================================== */
+
+* {
+  border-color: var(--color-rule);
+}
+
+html {
+  /* iOS bumps font size on rotate without this */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  line-height: var(--type-body-lh);
+  /* §1.2 — lining, fixed-width figures so magnitudes compare down a column */
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* §9 — visible keyboard focus on every interactive element, never removed
+   without replacement. 2px slate outline, 2px offset. */
+:focus-visible {
+  outline: 2px solid var(--color-slate);
+  outline-offset: 2px;
+}
+
+/* §1.6 + §9 — respect reduced motion throughout. The stamp animation and page
+   transitions cross-fade instead of moving. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
+   Type role utilities
+   ========================================================================== */
+
+@utility type-display-xl {
+  font-family: var(--font-display);
+  font-size: var(--type-display-xl);
+  line-height: var(--type-display-xl-lh);
+  font-weight: 400;
+}
+@utility type-display-lg {
+  font-family: var(--font-display);
+  font-size: var(--type-display-lg);
+  line-height: var(--type-display-lg-lh);
+  font-weight: 400;
+}
+@utility type-display-md {
+  font-family: var(--font-display);
+  font-size: var(--type-display-md);
+  line-height: var(--type-display-md-lh);
+  font-weight: 500;
+}
+@utility type-body-lg {
+  font-family: var(--font-body);
+  font-size: var(--type-body-lg);
+  line-height: var(--type-body-lg-lh);
+}
+@utility type-body {
+  font-family: var(--font-body);
+  font-size: var(--type-body);
+  line-height: var(--type-body-lh);
+}
+@utility type-body-sm {
+  font-family: var(--font-body);
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
+}
+@utility type-data-lg {
+  font-family: var(--font-data);
+  font-size: var(--type-data-lg);
+  line-height: var(--type-data-lg-lh);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@utility type-data {
+  font-family: var(--font-data);
+  font-size: var(--type-data);
+  line-height: var(--type-data-lh);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@utility type-data-sm {
+  font-family: var(--font-data);
+  font-size: var(--type-data-sm);
+  line-height: var(--type-data-sm-lh);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* §5 KPI Card label: uppercase, tracked, soft ink */
+@utility type-label {
+  font-family: var(--font-body);
+  font-size: var(--type-body-sm);
+  line-height: var(--type-body-sm-lh);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-soft);
+}
+
+/* ============================================================================
+   §8.4 KPI row dividers
+   Rules, not boxes (§5). The divider pattern changes per breakpoint:
+     <480px   single column, horizontal rules between each
+     480-1023 2x2, vertical rule between the pair + horizontal between rows
+     >=1024   4 across, vertical rules only
+
+   Written by hand rather than with Tailwind's `divide-*`, which walks children
+   in DOM order and has no concept of grid position: in a 2x2 it would put a
+   left border on the third cell, which begins a new row and must not have one.
+   ========================================================================== */
+
+.kpi-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  border-block: 1px solid var(--color-rule);
+}
+
+/* single column: a rule between each pair of stacked figures */
+.kpi-row > * + * {
+  border-top: 1px solid var(--color-rule);
+}
+
+@media (min-width: 480px) {
+  .kpi-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* reset, then re-apply by grid position rather than by DOM order */
+  .kpi-row > * + * {
+    border-top: 0;
+  }
+  .kpi-row > :nth-child(2n) {
+    border-left: 1px solid var(--color-rule);
+  }
+  .kpi-row > :nth-child(n + 3) {
+    border-top: 1px solid var(--color-rule);
+  }
+}
+
+@media (min-width: 1024px) {
+  .kpi-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .kpi-row > * {
+    border-top: 0;
+    border-left: 0;
+  }
+  /* every cell but the first gets the vertical rule */
+  .kpi-row > * + * {
+    border-left: 1px solid var(--color-rule);
+  }
+}
+
+/* ============================================================================
+   §4 Chart text
+
+   Recharts applies `tick`/`label` props as SVG attributes on <text>, and SVG
+   attributes do not accept `var(...)`. Passing a className instead is what lets
+   chart type stay token-driven rather than becoming the one place in the system
+   with hard-coded sizes and colours (§10).
+
+   `fill`, not `color`: SVG text takes its colour from fill.
+   ========================================================================== */
+
+.chart-tick {
+  font-family: var(--font-data);
+  font-size: var(--type-data-sm);
+  fill: var(--color-ink-soft);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.chart-slice-label {
+  font-family: var(--font-data);
+  font-size: var(--type-data-sm);
+  fill: var(--color-ink);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ============================================================================
+   §9 — visually hidden, for the data tables paired with every chart so screen
+   reader users get the same information non-visually.
+   ========================================================================== */
+
+@utility sr-only-ledger {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ============================================================================
+   §8.9 — minimum 44x44px tap target at mobile, padded invisibly rather than
+   enlarging the visible design.
+   ========================================================================== */
+
+@utility tap-target {
+  position: relative;
+}
+
+/* Expands the hit area to 44x44 without touching the visible box, by
+   overlaying a centred pseudo-element. `inset: auto` first so the explicit
+   top/left win regardless of source order. */
+@media (max-width: 767px) {
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}

@@ -1,0 +1,39 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+/tsconfig.tsbuildinfo
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env — never commit secrets (BOOTSTRAP_ADMIN_PASSWORD, DATABASE_URL)
+.env
+.env*.local
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# prisma
+/prisma/*.db
+/prisma/*.db-journal
+# Generated client — rebuilt by `prisma generate` on install and before build.
+/src/generated

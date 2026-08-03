@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Write",
+      "Read",
+      "WebFetch",
+      "WebSearch",
+      "Glob",
+      "Grep",
+      "PowerShell(Get-ChildItem -Force | Where-Object { $_.Name -ne 'node_modules' -and $_.Name -ne '.next' } | Select-Object Mode, LastWriteTime, Length, Name | Format-Table -AutoSize)",
+      "PowerShell($m = \"C:\\\\Users\\\\Ronen Hammond\\\\.claude\\\\projects\\\\D--Users-Ronen-Hammond-Desktop-GitHub-Repos-Portfolio-Tracker-System\\\\memory\"; if \\(Test-Path $m\\) { Get-ChildItem -Recurse $m | Select-Object FullName } else { \"no memory dir\" }; Get-ChildItem -Recurse src | Select-Object @{n='Path';e={$_.FullName.Replace\\(\"D:\\\\Users\\\\Ronen Hammond\\\\Desktop\\\\GitHub_Repos\\\\Portfolio_Tracker_System\\\\\",\"\"\\)}}, Length | Format-Table -AutoSize)",
+      "PowerShell(\"--- .env exists: $\\(Test-Path .env\\)\"; \"--- generated prisma exists: $\\(Test-Path src\\\\generated\\\\prisma\\)\"; \"--- prisma migrations: $\\(Test-Path prisma\\\\migrations\\)\"; \"--- .gitignore ---\"; Get-Content .gitignore; \"--- settings.local.json ---\"; Get-Content .claude\\\\settings.local.json; \"--- prisma.config.ts ---\"; Get-Content prisma.config.ts)",
+      "PowerShell(npx prisma generate)",
+      "PowerShell($env:DATABASE_URL = \"postgresql://placeholder:placeholder@localhost:5432/placeholder\"; npx prisma generate)",
+      "PowerShell(npm run *)",
+      "PowerShell(\"@prisma/adapter-pg: $\\(Test-Path node_modules\\\\@prisma\\\\adapter-pg\\)\"; \"@prisma/client: $\\(Test-Path node_modules\\\\@prisma\\\\client\\)\"; \"prisma: $\\(Test-Path node_modules\\\\prisma\\)\"; \"recharts: $\\(Test-Path node_modules\\\\recharts\\)\"; \"zod: $\\(Test-Path node_modules\\\\zod\\)\"; \"pg: $\\(Test-Path node_modules\\\\pg\\)\"; \"tsx: $\\(Test-Path node_modules\\\\tsx\\)\"; \"dotenv: $\\(Test-Path node_modules\\\\dotenv\\)\"; \"tailwindcss: $\\(Test-Path node_modules\\\\tailwindcss\\)\")",
+      "PowerShell(npm install *)",
+      "PowerShell(npx next --help 2>&1 | Select-Object -First 40)",
+      "PowerShell($env:DATABASE_URL = \"postgresql://placeholder:placeholder@localhost:5432/placeholder\"; npx next typegen)"
+    ]
+  }
+}

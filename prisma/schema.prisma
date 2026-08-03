@@ -1,0 +1,307 @@
+// Portfolio Tracker — data layer
+//
+// Source of truth: Portfolio_Tracker_System_Requirements.md (SRS) §4.
+// Conventions here follow Prisma 7: the `prisma-client` generator with an
+// explicit `output`, and a datasource with no `url` — the connection string
+// lives in prisma.config.ts so it is read once, from one place.
+//
+// Money is Decimal, never Float (NFR "Data integrity"). src/lib/money.ts keeps
+// that guarantee alive past the ORM by moving GHS across the API as a string,
+// since JSON.stringify would otherwise quietly turn a Decimal into a float.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Groups holdings in the data-entry form (FR-1) and the Strategy detail table.
+/// Distinct from Bucket: asset class is what a thing *is* and never changes;
+/// a bucket is a reporting choice the user is free to rearrange.
+enum AssetClass {
+  ETF
+  MUTUAL_FUND
+  CRYPTO
+  CASH_SAFETY
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  DEACTIVATED
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio structure
+// ---------------------------------------------------------------------------
+
+/// A reporting bucket (ETFs, Crypto, ...).
+///
+/// The SRS models `bucket` as an enum. It is a table instead, because design
+/// §1.1 makes bucket→colour "a functional requirement, not just a style note"
+/// (the FR-6/FR-7 paired pies are only comparable if Crypto is the same red in
+/// both). Storing `colorToken` on the row it belongs to makes that invariant
+/// structural — there is exactly one place a bucket's colour can come from, and
+/// no component can invent a different one. It also lets buckets be renamed,
+/// recoloured or retired without a migration, which an enum cannot.
+///
+/// `colorToken` is constrained in application code to BUCKET_COLOR_TOKENS in
+/// src/lib/buckets.ts, so the palette stays §1.1's and no arbitrary hex leaks in.
+model Bucket {
+  id         String    @id @default(cuid())
+  name       String    @unique
+  colorToken String
+  sortOrder  Int
+  /// Retire a bucket without deleting the history that references it.
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  holdings Holding[]
+  targets  TargetAllocation[]
+
+  @@index([sortOrder])
+}
+
+/// One fund / ticker / asset — the grain the SRS §3 asks for ("track every
+/// individual holding as its own row, rolled up into buckets only for
+/// reporting").
+model Holding {
+  id          String     @id @default(cuid())
+  ticker      String     @unique
+  displayName String
+  assetClass  AssetClass
+  bucketId    String
+  /// Free text from the SRS §3 tables ("Tech-heavy, concentrated").
+  notes       String?
+
+  /// FR-2: retiring a holding stops it appearing in new data-entry forms while
+  /// preserving every historical value it already has.
+  isActive Boolean @default(true)
+
+  /// Migration note (SRS §8). The six pre-migration quarters only ever recorded
+  /// bucket totals — there is no way to know retroactively what portion of the
+  /// old "Mutual Funds" figure was Epack vs. ArkFund vs. MFund. Rather than
+  /// making holdingId nullable and special-casing every rollup, each bucket gets
+  /// one synthetic aggregate holding to carry that history. QuarterEntry then
+  /// stays uniformly one row per holding per quarter — the SRS §4 "key design
+  /// decision" — and bucket rollups keep working untouched, while the UI can
+  /// still label these figures "aggregated / pre-migration".
+  isAggregate Boolean @default(false)
+
+  /// Display order within an asset-class group in the entry form (§6.2).
+  sortOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bucket  Bucket             @relation(fields: [bucketId], references: [id])
+  entries QuarterEntry[]
+  targets TargetAllocation[]
+
+  @@index([bucketId])
+  @@index([isActive, assetClass, sortOrder])
+}
+
+/// A closed quarter.
+///
+/// The SRS puts `quarterDate` directly on QuarterEntry. Promoting it to its own
+/// row buys three things the UI needs: FR-1's "must not duplicate an existing
+/// quarter" becomes a uniqueness constraint rather than a query; §2's stamp
+/// tooltip has a real "exact date entered" to show (`createdAt`, which is a
+/// property of the quarter, not of any one holding's figure); and SRS §8's
+/// "clearly flagged as aggregated / pre-migration" data has somewhere to live.
+model Quarter {
+  /// Identified by its END date: 2026-06-30 is Q2 2026 (src/lib/quarters.ts).
+  /// @db.Date, not timestamp — a quarter end is a calendar day, and storing it
+  /// with a time would reintroduce the timezone drift quarters.ts avoids.
+  quarterDate DateTime @id @db.Date
+
+  /// SRS §8 — true for the six imported quarters whose figures are bucket-level
+  /// only, so the dashboard can show continuous history while being honest that
+  /// granularity improves from the migration onward.
+  isPreMigration Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries QuarterEntry[]
+}
+
+/// One holding's value in one quarter. SRS §4: one row per holding per quarter,
+/// never one row per quarter with a column per bucket — this is what enables
+/// per-ticker charts (FR-5) and rollups computed rather than hand-maintained.
+model QuarterEntry {
+  id          String   @id @default(cuid())
+  quarterDate DateTime @db.Date
+  holdingId   String
+
+  /// GHS. Decimal(14,2) — pesewa-exact, and wide enough that the ceiling is
+  /// never a consideration. FR-1 validates non-negative in the app layer.
+  valueGHS Decimal @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quarter Quarter @relation(fields: [quarterDate], references: [quarterDate], onDelete: Cascade)
+  holding Holding @relation(fields: [holdingId], references: [id])
+
+  /// FR-1: one figure per holding per quarter, enforced by the database rather
+  /// than by whichever code path happens to write it.
+  @@unique([quarterDate, holdingId])
+  /// FR-5 reads a single holding's whole history; this is the index for it.
+  @@index([holdingId, quarterDate])
+}
+
+/// A target percentage, at either bucket or holding level (FR-3).
+///
+/// Exactly one of `bucketId` / `holdingId` is set. Prisma's schema language
+/// cannot express that, so it is enforced by a CHECK constraint applied from
+/// prisma/constraints.sql, and validated in the app before writing.
+///
+/// Rows are never updated in place — a new target is a new row with a later
+/// `effectiveFrom`. That is what makes FR-7 answerable ("was I already
+/// overweight crypto a year ago?"), which needs the target that was effective
+/// at *that* date, not today's.
+model TargetAllocation {
+  id String @id @default(cuid())
+
+  bucketId  String?
+  holdingId String?
+
+  /// Percent, 3dp. Holding-level targets must sum to their bucket's target
+  /// (FR-3), validated on save.
+  targetPct Decimal @db.Decimal(6, 3)
+
+  /// @db.Date for the same reason as Quarter.quarterDate.
+  effectiveFrom DateTime @db.Date
+
+  /// SRS Open Question 2 — an optional reason note, so target changes
+  /// accumulate into a decision log rather than appearing without explanation.
+  /// Optional, so answering "no" to that question costs nothing.
+  note String?
+
+  createdAt DateTime @default(now())
+
+  bucket  Bucket?  @relation(fields: [bucketId], references: [id])
+  holding Holding? @relation(fields: [holdingId], references: [id])
+
+  /// One target per subject per effective date — a second edit on the same day
+  /// replaces that row rather than creating an ambiguous pair.
+  @@unique([bucketId, effectiveFrom])
+  @@unique([holdingId, effectiveFrom])
+  @@index([effectiveFrom])
+}
+
+// ---------------------------------------------------------------------------
+// Access (SRS §4.1)
+// ---------------------------------------------------------------------------
+
+/// An account. There is no public sign-up: a row appears here only via the
+/// bootstrap Admin (FR-9.1) or a completed Invite (FR-9.2).
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String?
+  role         UserRole   @default(USER)
+  status       UserStatus @default(ACTIVE)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  /// FR-10's "last login" column. Open Question 4 resolved in favour of this
+  /// alone for v1 — no LoginEvent table (see the note at the end of this file).
+  lastLoginAt DateTime?
+
+  /// FR-8 / NFR "Brute-force protection": a short lockout after 5 failed
+  /// attempts. Counted on the row rather than in process memory because Vercel
+  /// runs many short-lived instances — an in-memory counter would give an
+  /// attacker five guesses *per instance* and reset on every cold start, which
+  /// is indistinguishable from having no lockout at all.
+  ///
+  /// Tracking this per account does mean someone who knows the email can
+  /// deliberately keep it locked. That is why the lockout is short and
+  /// self-clearing (src/server/auth.ts) rather than requiring an Admin to
+  /// unlock: a bounded nuisance is the better trade against unbounded guessing.
+  failedSignIns Int       @default(0)
+  lockedUntil   DateTime?
+
+  /// Null only for the bootstrap Admin (SRS §4.1).
+  invitedById String?
+
+  invitedBy      User?     @relation("UserInvites", fields: [invitedById], references: [id])
+  invitedUsers   User[]    @relation("UserInvites")
+  invitesCreated Invite[]  @relation("InviteCreatedBy")
+  sessions       Session[]
+
+  @@index([status])
+}
+
+/// A signed-in session, server-side.
+///
+/// Not in the SRS, but FR-8 and the NFR both require that deactivating an
+/// account "immediately blocks that account from continuing any open session",
+/// not just its next sign-in. A self-contained signed cookie (a JWT) cannot do
+/// that — it stays valid until it expires because nothing can reach back and
+/// revoke it. Sessions as rows make revocation a DELETE, and make §4.1's
+/// "checked on every authenticated request" a join the request already needs.
+model Session {
+  /// SHA-256 of the cookie value, never the value itself: a leaked database
+  /// snapshot should not hand over usable live sessions.
+  tokenHash String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  /// Best-effort context for the FR-10 admin view. Nullable — behind a proxy
+  /// these are advisory, and the app must not depend on them.
+  ipAddress String?
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// A single-use, time-limited invitation (FR-9).
+model Invite {
+  id    String   @id @default(cuid())
+  email String
+  role  UserRole @default(USER)
+
+  /// Hashed, like Session.tokenHash — an invite token is a credential that
+  /// creates an account, so the plaintext exists only in the link the Admin
+  /// copies (FR-9: delivery is manual for v1, no email service in the stack).
+  tokenHash String @unique
+
+  createdById String
+  expiresAt   DateTime
+  /// Set once, on acceptance — this is what makes the token single-use.
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  createdBy User @relation("InviteCreatedBy", fields: [createdById], references: [id])
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+// LoginEvent is deliberately absent.
+//
+// SRS Open Question 4 resolved in favour of User.lastLoginAt alone for v1. The
+// model stays specified in SRS §4.1 rather than existing here as a table that
+// nothing writes to, so adding the full log later is an additive migration —
+// which is exactly what "a clean extension rather than a redesign" asked for.
