@@ -6,10 +6,10 @@ const SESSION_COOKIE = "ledger_session";
 // Public routes that don't require authentication
 const PUBLIC_PATHS = ["/sign-in", "/invite"];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Static assets and API auth routes bypass middleware
+  // Static assets and API auth routes bypass middleware/proxy
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
@@ -40,12 +40,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
