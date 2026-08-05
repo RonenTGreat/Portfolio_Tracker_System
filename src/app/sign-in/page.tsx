@@ -41,7 +41,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center py-12 px-4">
+    <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center px-4">
       <div className="w-full max-w-md border border-rule bg-paper-raised p-8 shadow-none">
         <div className="mb-6 text-center">
           <h1 className="type-display-lg m-0 text-ink">Ledger</h1>
@@ -94,7 +94,7 @@ export default function SignInPage() {
           </div>
 
           <Button type="submit" disabled={loading} className="w-full justify-center">
-            {loading ? "Signing in..." : "Open Ledger"}
+            {loading ? "Signing in..." : "Sign in →"}
           </Button>
         </form>
       </div>

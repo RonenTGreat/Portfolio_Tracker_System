@@ -58,7 +58,7 @@ export async function POST(
           passwordHash,
           role: invite.role,
           status: "ACTIVE",
-          invitedById: invite.id,
+          invitedById: invite.createdById,
         },
       });
 

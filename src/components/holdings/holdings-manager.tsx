@@ -7,18 +7,27 @@ import { Input } from "@/components/ui/input";
 import type { HoldingDTO, BucketDTO } from "@/server/holdings";
 import { ASSET_CLASS_LABELS } from "@/lib/asset-classes";
 import type { AssetClass } from "@/generated/prisma/enums";
+import {
+  BUCKET_COLOR_TOKENS,
+  BUCKET_COLOR_LABELS,
+  type BucketColorToken,
+  bucketColor,
+} from "@/lib/buckets";
 
 export function HoldingsManager({
   initialHoldings,
-  buckets,
+  buckets: initialBuckets,
 }: {
   initialHoldings: HoldingDTO[];
   buckets: BucketDTO[];
 }) {
   const [holdings, setHoldings] = useState<HoldingDTO[]>(initialHoldings);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [buckets, setBuckets] = useState<BucketDTO[]>(initialBuckets);
 
-  // Form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddBucketForm, setShowAddBucketForm] = useState(false);
+
+  // Holding Form state
   const [ticker, setTicker] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [assetClass, setAssetClass] = useState<AssetClass>("ETF");
@@ -26,6 +35,12 @@ export function HoldingsManager({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Bucket Form state
+  const [bucketName, setBucketName] = useState("");
+  const [colorToken, setColorToken] = useState<BucketColorToken>("--color-ink");
+  const [bucketError, setBucketError] = useState<string | null>(null);
+  const [bucketSubmitting, setBucketSubmitting] = useState(false);
 
   async function handleAddHolding(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +55,7 @@ export function HoldingsManager({
           ticker,
           displayName,
           assetClass,
-          bucketId,
+          bucketId: bucketId || buckets[0]?.id,
           notes: notes || undefined,
         }),
       });
@@ -62,6 +77,59 @@ export function HoldingsManager({
     }
   }
 
+  async function handleAddBucket(e: React.FormEvent) {
+    e.preventDefault();
+    setBucketError(null);
+    setBucketSubmitting(true);
+
+    try {
+      const res = await fetch("/api/buckets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: bucketName,
+          colorToken,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setBucketError(data.error || "Failed to create bucket.");
+      } else {
+        setBuckets((prev) => [...prev, data.bucket]);
+        if (!bucketId) {
+          setBucketId(data.bucket.id);
+        }
+        setBucketName("");
+        setShowAddBucketForm(false);
+      }
+    } catch {
+      setBucketError("Network error creating bucket.");
+    } finally {
+      setBucketSubmitting(false);
+    }
+  }
+
+  async function toggleArchiveBucket(bucketId: string, currentArchived: boolean) {
+    try {
+      const res = await fetch(`/api/buckets/${bucketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: !currentArchived }),
+      });
+
+      if (res.ok) {
+        setBuckets((prev) =>
+          prev.map((b) =>
+            b.id === bucketId ? { ...b, archived: !currentArchived } : b,
+          ),
+        );
+      }
+    } catch {
+      // silent
+    }
+  }
+
   async function toggleActive(holdingId: string, currentActive: boolean) {
     try {
       const res = await fetch(`/api/holdings/${holdingId}`, {
@@ -70,7 +138,6 @@ export function HoldingsManager({
         body: JSON.stringify({ isActive: !currentActive }),
       });
 
-      const data = await res.json();
       if (res.ok) {
         setHoldings((prev) =>
           prev.map((h) => (h.id === holdingId ? { ...h, isActive: !currentActive } : h)),
@@ -81,17 +148,123 @@ export function HoldingsManager({
     }
   }
 
+  const activeBuckets = buckets.filter((b) => !b.archived);
+
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <p className="type-body-sm text-ink-soft m-0">
-          Track individual funds and tickers. Retiring a holding stops it from appearing in new entry forms while preserving history.
+      {/* Top Header & Action Buttons */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="type-body-sm text-ink-soft m-0 max-w-[60ch]">
+          Track individual funds and tickers. Retiring a holding or archiving a bucket stops it from appearing in new entry forms while preserving history.
         </p>
-        <Button onClick={() => setShowAddForm(!showAddForm)}>
-          {showAddForm ? "Cancel" : "Add Holding"}
-        </Button>
+        <div className="flex items-center gap-3 shrink-0">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowAddForm(false);
+              setShowAddBucketForm(!showAddBucketForm);
+            }}
+          >
+            {showAddBucketForm ? "Cancel Bucket" : "Add Bucket"}
+          </Button>
+          <Button
+            onClick={() => {
+              setShowAddBucketForm(false);
+              setShowAddForm(!showAddForm);
+            }}
+          >
+            {showAddForm ? "Cancel Holding" : "Add Holding"}
+          </Button>
+        </div>
       </div>
 
+      {/* Reporting Buckets Overview */}
+      <div className="border border-rule bg-paper-raised p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="type-body-sm font-medium text-ink">Reporting Buckets</div>
+          <span className="type-body-sm text-ink-soft">
+            Archiving a bucket removes it from new holding creation while preserving historical data.
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {buckets.map((b) => (
+            <div
+              key={b.id}
+              className={`inline-flex items-center gap-2 border border-rule px-3 py-1.5 type-body-sm rounded-soft transition-opacity ${
+                b.archived ? "bg-paper-raised text-ink-soft opacity-50" : "bg-paper text-ink"
+              }`}
+            >
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: bucketColor(b) }}
+              />
+              <span>{b.name}</span>
+              <button
+                type="button"
+                onClick={() => toggleArchiveBucket(b.id, b.archived)}
+                className="ml-1 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors cursor-pointer p-0.5"
+                title={b.archived ? "Restore bucket" : "Archive bucket"}
+                aria-label={b.archived ? `Restore ${b.name} bucket` : `Archive ${b.name} bucket`}
+              >
+                {b.archived ? <UnarchiveIcon /> : <ArchiveIcon />}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Add Bucket Form */}
+      {showAddBucketForm && (
+        <form onSubmit={handleAddBucket} className="border border-rule bg-paper-raised p-6 space-y-4">
+          <h3 className="type-display-md text-ink m-0 mb-2">New Reporting Bucket</h3>
+          {bucketError && (
+            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+              {bucketError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="bucketName" className="type-body-sm block mb-1 font-medium text-ink">
+                Bucket Name
+              </label>
+              <Input
+                id="bucketName"
+                required
+                value={bucketName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBucketName(e.target.value)}
+                placeholder="e.g. Real Estate"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="colorToken" className="type-body-sm block mb-1 font-medium text-ink">
+                Color Theme
+              </label>
+              <select
+                id="colorToken"
+                value={colorToken}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setColorToken(e.target.value as BucketColorToken)
+                }
+                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+              >
+                {BUCKET_COLOR_TOKENS.map((token) => (
+                  <option key={token} value={token}>
+                    {BUCKET_COLOR_LABELS[token]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <Button type="submit" disabled={bucketSubmitting}>
+            {bucketSubmitting ? "Saving..." : "Save Bucket"}
+          </Button>
+        </form>
+      )}
+
+      {/* Add Holding Form */}
       {showAddForm && (
         <form onSubmit={handleAddHolding} className="border border-rule bg-paper-raised p-6 space-y-4">
           <h3 className="type-display-md text-ink m-0 mb-2">New Holding</h3>
@@ -153,11 +326,11 @@ export function HoldingsManager({
               </label>
               <select
                 id="bucketId"
-                value={bucketId}
+                value={bucketId || activeBuckets[0]?.id}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBucketId(e.target.value)}
                 className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
               >
-                {buckets.map((b) => (
+                {activeBuckets.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name}
                   </option>
@@ -174,7 +347,6 @@ export function HoldingsManager({
               id="notes"
               value={notes}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
-
               placeholder="e.g. Core broad market equity"
               className="w-full"
             />
@@ -246,5 +418,48 @@ export function HoldingsManager({
         </table>
       </div>
     </div>
+  );
+}
+
+/* §1.5 — stroke-width 1.5, single weight, currentColor so the button's own
+   hover colour drives them. */
+
+function ArchiveIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="4" rx="1" />
+      <path d="M4 7v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
+
+function UnarchiveIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="4" rx="1" />
+      <path d="M4 7v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7" />
+      <path d="M12 12v6m-3-3 3-3 3 3" />
+    </svg>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/shell/app-shell";
+import { getSessionUser } from "@/server/auth";
 
 /* §1.2 + §8.10 — next/font/google gives font-display: swap by default, so
    mobile users on slow connections see correctly-sized fallback text
@@ -42,16 +43,19 @@ export const viewport = {
   themeColor: "#efede4",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const user = await getSessionUser();
+  const isAdmin = user?.role === "ADMIN";
+
   return (
     <html
       lang="en"
       className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}
     >
       <body>
-        <AppShell>{children}</AppShell>
+        <AppShell isAdmin={isAdmin}>{children}</AppShell>
       </body>
     </html>
   );

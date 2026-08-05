@@ -5,7 +5,6 @@
  * at the top of the nav rail.
  */
 
-import { HeaderSignOut } from "@/components/shell/header-sign-out";
 
 export function PageHeader({
   title,
@@ -26,7 +25,6 @@ export function PageHeader({
       </div>
       <div className="flex items-center gap-3 shrink-0">
         {action}
-        <HeaderSignOut />
       </div>
     </header>
   );

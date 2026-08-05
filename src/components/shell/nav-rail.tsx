@@ -14,7 +14,7 @@ import { NAV_ITEMS, WORDMARK } from "./nav-items";
  */
 import { useRouter } from "next/navigation";
 
-export function NavRail() {
+export function NavRail({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -22,6 +22,9 @@ export function NavRail() {
     return null;
   }
 
+  const items = NAV_ITEMS.filter(
+    (item) => !("adminOnly" in item && item.adminOnly) || isAdmin,
+  );
 
   async function handleSignOut() {
     try {
@@ -40,7 +43,7 @@ export function NavRail() {
       className="fixed inset-y-0 left-0 z-20 hidden w-[240px] flex-col justify-between border-r border-rule bg-paper md:flex"
     >
       <div>
-        <div className="px-6 py-8">
+        <div className="px-6 py-4">
           <Link
             href="/dashboard"
             className="type-display-md text-ink no-underline"
@@ -50,7 +53,7 @@ export function NavRail() {
         </div>
 
         <ul className="flex list-none flex-col p-0">
-          {NAV_ITEMS.map((item) => {
+          {items.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <li key={item.href} className="border-b border-rule first:border-t">
@@ -77,10 +80,8 @@ export function NavRail() {
               </li>
             );
           })}
-        </ul>
-      </div>
 
-      <div className="p-6 border-t border-rule">
+          <div className="p-3 border-t border-rule">
         <button
           type="button"
           onClick={handleSignOut}
@@ -89,6 +90,10 @@ export function NavRail() {
           Sign Out →
         </button>
       </div>
+        </ul>
+      </div>
+
+      
     </nav>
   );
 }

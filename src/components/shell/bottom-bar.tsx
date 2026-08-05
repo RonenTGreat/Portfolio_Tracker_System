@@ -9,7 +9,7 @@ import { NAV_ITEMS } from "./nav-items";
  *
  * Equispaced navigation tabs plus a Sign Out action.
  */
-export function BottomBar() {
+export function BottomBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -17,6 +17,9 @@ export function BottomBar() {
     return null;
   }
 
+  const items = NAV_ITEMS.filter(
+    (item) => !("adminOnly" in item && item.adminOnly) || isAdmin,
+  );
 
   async function handleSignOut() {
     try {
@@ -34,7 +37,7 @@ export function BottomBar() {
       className="fixed inset-x-0 bottom-0 z-20 border-t border-rule bg-paper-raised pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="m-0 flex list-none items-center justify-around p-0 overflow-x-auto">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = pathname.startsWith(item.href);
           return (
             <li key={item.href} className="flex-1 min-w-[60px]">

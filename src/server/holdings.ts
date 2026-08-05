@@ -10,6 +10,8 @@
 import { db } from "@/lib/db";
 import type { AssetClass } from "@/generated/prisma/enums";
 import type {
+  CreateBucketInput,
+  UpdateBucketInput,
   CreateHoldingInput,
   UpdateHoldingInput,
 } from "@/lib/validation";
@@ -158,6 +160,97 @@ export async function listBuckets(
     sortOrder: row.sortOrder,
     archived: row.archivedAt !== null,
   }));
+}
+
+export async function findBucketByName(
+  name: string,
+): Promise<{ id: string } | null> {
+  return db.bucket.findFirst({
+    where: { name: { equals: name, mode: "insensitive" } },
+    select: { id: true },
+  });
+}
+
+export async function createBucket(
+  input: CreateBucketInput,
+): Promise<BucketDTO> {
+  const row = await db.bucket.create({
+    data: {
+      name: input.name,
+      colorToken: input.colorToken,
+      sortOrder: input.sortOrder ?? 0,
+    },
+    select: {
+      id: true,
+      name: true,
+      colorToken: true,
+      sortOrder: true,
+      archivedAt: true,
+    },
+  });
+
+  return {
+    id: row.id,
+    name: row.name,
+    colorToken: row.colorToken,
+    sortOrder: row.sortOrder,
+    archived: row.archivedAt !== null,
+  };
+}
+
+export async function getBucket(id: string): Promise<BucketDTO | null> {
+  const row = await db.bucket.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      colorToken: true,
+      sortOrder: true,
+      archivedAt: true,
+    },
+  });
+
+  return row
+    ? {
+        id: row.id,
+        name: row.name,
+        colorToken: row.colorToken,
+        sortOrder: row.sortOrder,
+        archived: row.archivedAt !== null,
+      }
+    : null;
+}
+
+export async function updateBucket(
+  id: string,
+  input: UpdateBucketInput,
+): Promise<BucketDTO> {
+  const row = await db.bucket.update({
+    where: { id },
+    data: {
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.colorToken !== undefined && { colorToken: input.colorToken }),
+      ...(input.sortOrder !== undefined && { sortOrder: input.sortOrder }),
+      ...(input.archived !== undefined && {
+        archivedAt: input.archived ? new Date() : null,
+      }),
+    },
+    select: {
+      id: true,
+      name: true,
+      colorToken: true,
+      sortOrder: true,
+      archivedAt: true,
+    },
+  });
+
+  return {
+    id: row.id,
+    name: row.name,
+    colorToken: row.colorToken,
+    sortOrder: row.sortOrder,
+    archived: row.archivedAt !== null,
+  };
 }
 
 export async function createHolding(

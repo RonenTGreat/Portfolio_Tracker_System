@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function HoldingsPage() {
   const [holdings, buckets] = await Promise.all([
     listAllHoldings(),
-    listBuckets(),
+    listBuckets({ includeArchived: true }),
   ]);
 
   return (

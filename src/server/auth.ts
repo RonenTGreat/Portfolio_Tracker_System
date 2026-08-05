@@ -242,6 +242,8 @@ export interface ValidInvite {
   id: string;
   email: string;
   role: UserRole;
+  /** The User who created this invite — used as invitedById on the new User. */
+  createdById: string;
 }
 
 /**
@@ -266,6 +268,7 @@ export async function resolveInvite(
       role: true,
       expiresAt: true,
       acceptedAt: true,
+      createdById: true,
     },
   });
 
@@ -273,7 +276,7 @@ export async function resolveInvite(
   if (invite.acceptedAt) return null;
   if (invite.expiresAt <= new Date()) return null;
 
-  return { id: invite.id, email: invite.email, role: invite.role };
+  return { id: invite.id, email: invite.email, role: invite.role, createdById: invite.createdById };
 }
 
 /**

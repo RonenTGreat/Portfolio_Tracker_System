@@ -5,14 +5,20 @@ import { NavRail } from "./nav-rail";
 import { BottomBar } from "./bottom-bar";
 import { TopBar } from "./top-bar";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  isAdmin = false,
+}: {
+  children: React.ReactNode;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const isAuthPage = pathname === "/sign-in" || pathname.startsWith("/invite");
 
   if (isAuthPage) {
     return (
       <div className="min-h-screen bg-paper">
-        <main className="mx-auto max-w-[1200px] px-4 py-6">
+        <main className="mx-auto max-w-[1200px] px-4 py-2">
           {children}
         </main>
       </div>
@@ -21,8 +27,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <NavRail />
-      <BottomBar />
+      <NavRail isAdmin={isAdmin} />
+      <BottomBar isAdmin={isAdmin} />
 
       <div className="md:pl-[240px]">
         <TopBar />

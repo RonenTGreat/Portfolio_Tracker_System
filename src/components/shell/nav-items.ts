@@ -8,7 +8,7 @@ export const NAV_ITEMS = [
   { href: "/strategy", label: "Strategy" },
   { href: "/compare", label: "Compare" },
   { href: "/holdings", label: "Holdings" },
-  { href: "/admin", label: "Admin" },
+  { href: "/admin", label: "Admin", adminOnly: true },
 ] as const;
 
 /** §6.1 etc. — the wordmark, set in Fraunces at the top of the rail. */

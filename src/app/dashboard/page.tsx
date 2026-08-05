@@ -6,6 +6,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { TotalValueChart } from "@/components/charts/total-value-chart";
 import { CompositionChart } from "@/components/charts/composition-chart";
 import { AllocationPie } from "@/components/charts/allocation-pie";
+import { TargetBarChart } from "@/components/charts/target-bar-chart";
 import { VarianceTable } from "@/components/dashboard/variance-table";
 import { getDashboard, type AssetClassKpiDTO } from "@/server/dashboard";
 import { ASSET_CLASS_LABELS } from "@/lib/asset-classes";
@@ -218,6 +219,16 @@ export default async function DashboardPage() {
             />
           </div>
         </div>
+      </Section>
+
+      {/* FR-4 — bar chart: target % vs. current % by bucket, with drill-down
+          to individual holdings. The visual complement to the variance table
+          below: this makes a 20pp gap visible, the table makes it precise. */}
+      <Section
+        title="Target vs. Current"
+        caption={<AsOfCaption label={latestLabel} />}
+      >
+        <TargetBarChart allocation={data.allocation} />
       </Section>
 
       {/* §6.1.5 — the variance table, drift first. */}
