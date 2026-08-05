@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
 
 /**
  * Mobile bottom bar — design §8.2.
  *
- * Equispaced navigation tabs plus a Sign Out action.
+ * Equispaced navigation tabs for primary pages.
  */
 export function BottomBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   if (pathname === "/sign-in" || pathname.startsWith("/invite")) {
     return null;
@@ -20,16 +19,6 @@ export function BottomBar({ isAdmin = false }: { isAdmin?: boolean }) {
   const items = NAV_ITEMS.filter(
     (item) => !("adminOnly" in item && item.adminOnly) || isAdmin,
   );
-
-  async function handleSignOut() {
-    try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-      router.push("/sign-in");
-      router.refresh();
-    } catch {
-      window.location.href = "/sign-in";
-    }
-  }
 
   return (
     <nav
@@ -62,15 +51,6 @@ export function BottomBar({ isAdmin = false }: { isAdmin?: boolean }) {
             </li>
           );
         })}
-        <li className="flex-1 min-w-[60px]">
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="relative flex min-h-[44px] w-full items-center justify-center px-1 py-3 text-center type-body-sm text-ink-soft hover:text-ledger-red transition-colors"
-          >
-            Sign Out
-          </button>
-        </li>
       </ul>
     </nav>
   );
