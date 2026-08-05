@@ -115,9 +115,9 @@ export function LedgerTh({
               : "none"
       }
       className={[
-        "type-body-sm border-b border-rule py-2 font-normal text-ink-soft",
+        "type-body-sm border-b border-rule py-2 px-3 md:px-4 font-normal text-ink-soft",
         align,
-        sticky && "sticky left-0 z-10 bg-paper",
+        sticky && "sticky left-0 z-10 bg-paper pl-0",
         className,
       ]
         .filter(Boolean)
@@ -173,9 +173,9 @@ export function LedgerTd({
       colSpan={colSpan}
       className={[
         // §8.6 — row height grows on touch for comfortable tap targets.
-        "py-3 md:py-2",
+        "py-3 md:py-2 px-3 md:px-4",
         numeric ? "type-data text-right" : "type-body",
-        sticky && "sticky left-0 z-10 bg-inherit",
+        sticky && "sticky left-0 z-10 bg-inherit pl-0",
         className,
       ]
         .filter(Boolean)

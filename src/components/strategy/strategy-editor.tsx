@@ -358,7 +358,7 @@ export function StrategyEditor({
                   <LedgerTh>Type</LedgerTh>
                   <LedgerTh numeric>Target %</LedgerTh>
                   <LedgerTh numeric>Current %</LedgerTh>
-                  <LedgerTh>Description</LedgerTh>
+                  <LedgerTh className="hidden mobile:table-cell pl-6 md:pl-8">Description</LedgerTh>
                 </LedgerRow>
               </LedgerHead>
               <LedgerBody>
@@ -534,8 +534,8 @@ function StrategyHoldingGroup({
           </LedgerTd>
           {/* §8.6 — Description drops first on a narrow screen; it is the only
               column whose absence costs nothing. */}
-          <LedgerTd className="hidden mobile:table-cell">
-            <span className="type-body-sm text-ink-soft">
+          <LedgerTd className="hidden mobile:table-cell pl-6 md:pl-8">
+            <span className="type-body-sm text-ink-soft block min-w-[200px]">
               {holding.notes ?? "—"}
             </span>
           </LedgerTd>
