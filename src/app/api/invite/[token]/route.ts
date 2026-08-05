@@ -10,6 +10,7 @@ import { badRequest, conflict, created, notFound, ok, readJson, serverError } fr
 import { acceptInviteInput } from "@/lib/validation";
 import { hashPassword } from "@/lib/password";
 import { resolveInvite, startSession } from "@/server/auth";
+import { initUserPortfolio } from "@/lib/portfolio-init";
 
 export async function GET(
   _request: Request,
@@ -69,6 +70,8 @@ export async function POST(
 
       return newUser;
     });
+
+    await initUserPortfolio(user.id);
 
     const ipAddress = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const userAgent = request.headers.get("user-agent");

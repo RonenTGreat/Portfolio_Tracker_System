@@ -12,6 +12,7 @@
  * A leaked database snapshot should not hand over usable live sessions.
  */
 
+import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
@@ -102,6 +103,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 export async function getAdminUser(): Promise<SessionUser | null> {
   const user = await getSessionUser();
   return user?.role === "ADMIN" ? user : null;
+}
+
+/** Throw/redirect if no active session is present. */
+export async function requireSessionUser(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user) {
+    redirect("/sign-in");
+  }
+  return user;
 }
 
 /* -------------------------------------------------------------------------- */

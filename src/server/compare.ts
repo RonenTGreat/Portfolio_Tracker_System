@@ -1,19 +1,6 @@
 /**
  * Quarter-over-quarter comparison (FR-6) and target-vs-actual across time
- * (FR-7).
- *
- * One module for both because they are the same question asked twice: FR-6
- * compares a quarter against another quarter, FR-7 compares a quarter against
- * the target that was in force on its date. Both need "the allocation as it
- * stood on date X", and computing that twice in two files is how the compare
- * page and the drift view would end up disagreeing about the same quarter.
- *
- * The pre-migration caveat runs through everything here. SRS §8: six imported
- * quarters hold bucket-level figures only, carried by one synthetic aggregate
- * holding per bucket. A per-holding comparison against one of those quarters is
- * therefore not "every holding is new" — it is "that quarter doesn't record
- * holdings". The DTOs say which, so the UI can state it rather than presenting
- * an artefact of the import as a real move.
+ * (FR-7), scoped per user.
  */
 
 import { db } from "@/lib/db";
@@ -25,6 +12,7 @@ import {
   type MoneyString,
 } from "@/lib/money";
 import { parseISODate, toISODate } from "@/lib/quarters";
+import { requireSessionUser } from "@/server/auth";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                       */
@@ -39,7 +27,6 @@ export interface QuarterOptionDTO {
 
 /** One row of the FR-6 delta table, at either level. */
 export interface DeltaRowDTO {
-  /** Holding id, or bucket id on a bucket row. */
   id: string;
   label: string;
   sublabel: string | null;
@@ -49,9 +36,7 @@ export interface DeltaRowDTO {
   valueA: MoneyString;
   valueB: MoneyString;
   deltaGHS: MoneyString;
-  /** Null when A was zero — "+∞%" is not a figure. UI shows "new" instead. */
   pctChange: number | null;
-  /** True when this row exists in B but not A, or vice versa. */
   onlyInA: boolean;
   onlyInB: boolean;
   isAggregate: boolean;
@@ -79,17 +64,12 @@ export interface ComparisonDTO {
   totalPctChange: number | null;
   byHolding: DeltaRowDTO[];
   byBucket: DeltaRowDTO[];
-  /**
-   * True when either side is pre-migration, so `byHolding` compares against a
-   * quarter that never recorded holdings. The bucket comparison is unaffected.
-   */
   holdingLevelIncomplete: boolean;
 }
 
 /** One bucket's variance from target in one quarter — the FR-7 drift series. */
 export interface DriftPointDTO {
   quarterDate: string;
-  /** bucketId → variance in percentage points. Absent when no target applied. */
   byBucket: Record<string, number>;
 }
 
@@ -110,10 +90,8 @@ export interface DriftDTO {
   isPreMigration: boolean;
   totalGHS: MoneyString;
   rows: TargetVsActualRowDTO[];
-  /** Every quarter on record, so drift is visible as a trend not a snapshot. */
   series: DriftPointDTO[];
   buckets: { id: string; name: string; colorToken: string; sortOrder: number }[];
-  /** Sum of the target shares that were set — flags an incomplete strategy. */
   targetTotalPct: number | null;
 }
 
@@ -135,8 +113,9 @@ interface HoldingMeta {
   };
 }
 
-async function loadHoldingMeta(): Promise<Map<string, HoldingMeta>> {
+async function loadHoldingMeta(userId: string): Promise<Map<string, HoldingMeta>> {
   const rows = await db.holding.findMany({
+    where: { userId },
     select: {
       id: true,
       ticker: true,
@@ -155,20 +134,10 @@ interface QuarterSnapshot {
   quarterDate: string;
   isPreMigration: boolean;
   totalGHS: MoneyString;
-  /** holdingId → value, for holdings that still exist. */
   byHolding: Map<string, MoneyString>;
-  /** bucketId → value. */
   byBucket: Map<string, MoneyString>;
 }
 
-/**
- * One quarter rolled up both ways.
- *
- * A figure whose holding has since been deleted still counts toward the total —
- * the money was there — but cannot be attributed to a bucket or a row, so it is
- * omitted from the breakdowns only. Same rule as the dashboard, deliberately:
- * the two pages must agree on what a quarter totalled.
- */
 function snapshot(
   quarter: {
     quarterDate: Date;
@@ -210,17 +179,12 @@ function snapshot(
   };
 }
 
-/**
- * The bucket target effective on `date` (FR-7).
- *
- * Same semantics as the dashboard's: targets are never updated in place, so
- * "the target that applied then" is the latest row not after that date.
- */
 async function effectiveBucketTargets(
   date: Date,
+  userId: string,
 ): Promise<Map<string, number>> {
   const rows = await db.targetAllocation.findMany({
-    where: { bucketId: { not: null }, effectiveFrom: { lte: date } },
+    where: { userId, bucketId: { not: null }, effectiveFrom: { lte: date } },
     select: { bucketId: true, targetPct: true, effectiveFrom: true },
     orderBy: { effectiveFrom: "desc" },
   });
@@ -269,9 +233,10 @@ function sideFrom(
 /* Reads                                                                       */
 /* -------------------------------------------------------------------------- */
 
-/** Every recorded quarter, newest first — the two selectors' options. */
-export async function listQuarterOptions(): Promise<QuarterOptionDTO[]> {
+export async function listQuarterOptions(userIdParam?: string): Promise<QuarterOptionDTO[]> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const rows = await db.quarter.findMany({
+    where: { userId },
     orderBy: { quarterDate: "desc" },
     select: {
       quarterDate: true,
@@ -287,22 +252,17 @@ export async function listQuarterOptions(): Promise<QuarterOptionDTO[]> {
   }));
 }
 
-/**
- * Compare two quarters (FR-6). `a` is the earlier side by convention — the
- * caller passes them in the order the user picked, and a delta is read as
- * "B minus A", so swapping them flips every sign, which is the point.
- *
- * Returns null when either date isn't recorded, so the page can say which
- * rather than rendering a comparison against zero.
- */
 export async function getComparison(
   isoDateA: string,
   isoDateB: string,
+  userIdParam?: string,
 ): Promise<ComparisonDTO | null> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const [holdings, rows] = await Promise.all([
-    loadHoldingMeta(),
+    loadHoldingMeta(userId),
     db.quarter.findMany({
       where: {
+        userId,
         quarterDate: { in: [parseISODate(isoDateA), parseISODate(isoDateB)] },
       },
       select: {
@@ -321,7 +281,6 @@ export async function getComparison(
   const snapA = snapshot(rowA, holdings);
   const snapB = snapshot(rowB, holdings);
 
-  // --- Per-holding rows ----------------------------------------------------
   const holdingIds = new Set([...snapA.byHolding.keys(), ...snapB.byHolding.keys()]);
   const byHolding: DeltaRowDTO[] = [];
 
@@ -348,7 +307,6 @@ export async function getComparison(
     });
   }
 
-  // --- Per-bucket rows -----------------------------------------------------
   const bucketMeta = new Map<string, HoldingMeta["bucket"]>();
   for (const holding of holdings.values()) {
     bucketMeta.set(holding.bucketId, holding.bucket);
@@ -379,9 +337,6 @@ export async function getComparison(
     });
   }
 
-  // §6.4 default sort: |Δ GHS| descending, biggest mover first. Sorted here so
-  // the server-rendered first paint already leads with the mover, rather than
-  // the table re-ordering itself once the client takes over.
   const byAbsDelta = (x: DeltaRowDTO, y: DeltaRowDTO) =>
     Math.abs(Number(y.deltaGHS)) - Math.abs(Number(x.deltaGHS));
   byHolding.sort(byAbsDelta);
@@ -398,20 +353,12 @@ export async function getComparison(
   };
 }
 
-/**
- * Target vs. actual for one quarter, plus the drift series across all of them
- * (FR-7, design §6.5).
- *
- * The series carries one variance figure per bucket per quarter, each measured
- * against the target effective *on that quarter's date* — not today's target.
- * That is the whole point: a line drawn against today's target would show a
- * flat history every time the target changed, hiding exactly the slow drift the
- * chart exists to reveal.
- */
-export async function getDrift(isoDate: string): Promise<DriftDTO | null> {
+export async function getDrift(isoDate: string, userIdParam?: string): Promise<DriftDTO | null> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const [holdings, quarterRows, targetRows] = await Promise.all([
-    loadHoldingMeta(),
+    loadHoldingMeta(userId),
     db.quarter.findMany({
+      where: { userId },
       orderBy: { quarterDate: "asc" },
       select: {
         quarterDate: true,
@@ -420,7 +367,7 @@ export async function getDrift(isoDate: string): Promise<DriftDTO | null> {
       },
     }),
     db.targetAllocation.findMany({
-      where: { bucketId: { not: null } },
+      where: { userId, bucketId: { not: null } },
       select: { bucketId: true, targetPct: true, effectiveFrom: true },
       orderBy: { effectiveFrom: "asc" },
     }),
@@ -435,13 +382,6 @@ export async function getDrift(isoDate: string): Promise<DriftDTO | null> {
     bucketMeta.set(holding.bucketId, holding.bucket);
   }
 
-  /**
-   * The target for `bucketId` in force on `date`, from the already-loaded rows.
-   *
-   * Resolved in memory rather than with one query per quarter: the series walks
-   * every quarter, and a round trip each would turn a page render into ~40
-   * queries. Rows are ascending, so the last one at or before the date wins.
-   */
   function targetOn(bucketId: string, date: Date): number | null {
     let value: number | null = null;
     for (const row of targetRows) {
@@ -452,12 +392,9 @@ export async function getDrift(isoDate: string): Promise<DriftDTO | null> {
     return value;
   }
 
-  // --- The selected quarter, in detail -------------------------------------
   const selectedDate = parseISODate(isoDate);
-  const targets = await effectiveBucketTargets(selectedDate);
+  const targets = await effectiveBucketTargets(selectedDate, userId);
 
-  // Buckets with a target but nothing held must still appear: 0% against a 10%
-  // target is drift, and omitting the row would hide the largest gap there is.
   const rowBucketIds = new Set([
     ...selected.byBucket.keys(),
     ...targets.keys(),
@@ -485,16 +422,12 @@ export async function getDrift(isoDate: string): Promise<DriftDTO | null> {
     })
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 
-  // --- The drift series ----------------------------------------------------
   const series: DriftPointDTO[] = snapshots.map((snap) => {
     const date = parseISODate(snap.quarterDate);
     const byBucket: Record<string, number> = {};
 
     for (const bucketId of bucketMeta.keys()) {
       const target = targetOn(bucketId, date);
-      // No target then means no variance then — not a variance of zero. Leaving
-      // the key absent breaks the line, which is honest: there was nothing to
-      // be off by.
       if (target === null) continue;
       const value = snap.byBucket.get(bucketId) ?? "0.00";
       const actual = pctOfTotal(value, snap.totalGHS);
@@ -504,8 +437,6 @@ export async function getDrift(isoDate: string): Promise<DriftDTO | null> {
     return { quarterDate: snap.quarterDate, byBucket };
   });
 
-  // Only buckets that appear somewhere in the series get a line, so a bucket
-  // created after the last quarter doesn't add an empty legend entry.
   const seriesBucketIds = new Set<string>();
   for (const point of series) {
     for (const bucketId of Object.keys(point.byBucket)) {

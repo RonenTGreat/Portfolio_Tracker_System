@@ -1,26 +1,9 @@
 /**
- * One-time importer for the spreadsheet's history (SRS §8).
+ * One-time importer for the spreadsheet's history (SRS §8), scoped per user.
  *
  * Usage:
  *   npx tsx prisma/import.ts path/to/history.csv
  *   npx tsx prisma/import.ts path/to/history.csv --dry-run
- *
- * Expected CSV — first column the quarter end date, one further column per
- * bucket or ticker, header row required:
- *
- *   quarter,ETFs,Mutual Funds,Crypto,Emergency Fund,T-Bills
- *   2025-03-31,12400.00,9800.00,6200.50,1500.00,3000.00
- *   2025-06-30,13100.00,10250.00,9400.75,1500.00,3000.00
- *
- * Column headers are matched against bucket names first, then holding tickers,
- * so the same importer handles both the pre-migration bucket totals and any
- * later per-holding export without a flag to say which is which. A file mixing
- * both is accepted: bucket columns land on that bucket's aggregate holding,
- * ticker columns on the holding itself.
- *
- * Rows are upserted, so re-running a corrected file fixes figures rather than
- * duplicating them. `--dry-run` reports exactly what would change and writes
- * nothing — worth using first, since this touches real financial history.
  */
 
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -38,12 +21,6 @@ const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 /* CSV parsing                                                                 */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Minimal RFC-4180 reader: quoted fields, escaped quotes, CRLF or LF.
- * Written out rather than pulling in a CSV dependency for one throwaway import
- * — and a quoted field is not optional, since "1,234.00" is exactly the shape a
- * spreadsheet exports GHS figures in.
- */
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -73,7 +50,7 @@ function parseCsv(text: string): string[][] {
       row.push(field);
       field = "";
     } else if (char === "\r") {
-      // handled by the \n that follows
+      // handled by \n
     } else if (char === "\n") {
       row.push(field);
       rows.push(row);
@@ -84,7 +61,6 @@ function parseCsv(text: string): string[][] {
     }
   }
 
-  // Trailing line with no newline terminator.
   if (field !== "" || row.length > 0) {
     row.push(field);
     rows.push(row);
@@ -93,15 +69,6 @@ function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
 }
 
-/**
- * Accepts `1234.5`, `1,234.50`, `GHS 1,234.50`, `(500.00)` for negatives, and
- * blank for "not held this quarter". Returns a 2dp decimal string — money never
- * becomes a float on the way in, per src/lib/money.ts.
- *
- * Deliberately strict: an unparseable cell aborts the import rather than being
- * coerced to 0, because a silent zero in a portfolio history is indistinguishable
- * from a real "I sold everything" and would corrupt every QoQ figure after it.
- */
 function parseMoney(raw: string): string | null {
   let cleaned = raw.replace(/\s|,|GHS/gi, "").trim();
   if (cleaned === "" || cleaned === "-") return null;
@@ -125,7 +92,6 @@ function parseMoney(raw: string): string | null {
   return negative ? `-${amount}` : amount;
 }
 
-/** Quarter ends only — the same rule the Quarter_is_quarter_end constraint holds. */
 function parseQuarterDate(raw: string): Date {
   const trimmed = raw.trim();
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
@@ -140,7 +106,6 @@ function parseQuarterDate(raw: string): Date {
   const date = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
   const month = date.getUTCMonth() + 1;
 
-  // Day 0 of the next month is the last day of this one.
   const lastDay = new Date(Date.UTC(Number(y), month, 0)).getUTCDate();
   if (![3, 6, 9, 12].includes(month) || date.getUTCDate() !== lastDay) {
     throw new Error(
@@ -172,9 +137,16 @@ async function main() {
   const [header, ...dataRows] = rows;
   const columns = header.slice(1).map((h) => h.trim());
 
-  // --- Resolve every column to a holding id before writing anything ---------
-  const buckets = await db.bucket.findMany({ select: { id: true, name: true } });
+  const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const user = await db.user.findFirst({ where: email ? { email } : {} });
+  if (!user) {
+    throw new Error("No user found in the database. Run the seed first.");
+  }
+  const userId = user.id;
+
+  const buckets = await db.bucket.findMany({ where: { userId }, select: { id: true, name: true } });
   const holdings = await db.holding.findMany({
+    where: { userId },
     select: { id: true, ticker: true, isAggregate: true },
   });
 
@@ -218,12 +190,8 @@ async function main() {
     process.exit(1);
   }
 
-  // A file whose columns are all buckets is pre-migration history by definition
-  // (SRS §8) — flag the quarter so the UI can say so, rather than asking the
-  // user to remember which quarters were imported at which granularity.
   const allAggregate = resolved.every((r) => r.aggregate);
 
-  // --- Write ---------------------------------------------------------------
   let quarterCount = 0;
   let entryCount = 0;
 
@@ -264,20 +232,18 @@ async function main() {
       continue;
     }
 
-    // One transaction per quarter: a partially written quarter would show a
-    // wrong total on the dashboard, which is worse than a missing one.
     await db.$transaction(async (tx) => {
-      await tx.quarter.upsert({
-        where: { quarterDate },
+      const quarter = await tx.quarter.upsert({
+        where: { userId_quarterDate: { userId, quarterDate } },
         update: { isPreMigration: allAggregate },
-        create: { quarterDate, isPreMigration: allAggregate },
+        create: { userId, quarterDate, isPreMigration: allAggregate },
       });
 
       for (const { holdingId, value } of values) {
         await tx.quarterEntry.upsert({
-          where: { quarterDate_holdingId: { quarterDate, holdingId } },
-          update: { valueGHS: value },
-          create: { quarterDate, holdingId, valueGHS: value },
+          where: { quarterId_holdingId: { quarterId: quarter.id, holdingId } },
+          update: { valueGHS: value, quarterDate },
+          create: { quarterId: quarter.id, holdingId, quarterDate, valueGHS: value },
         });
       }
     });

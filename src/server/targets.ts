@@ -1,25 +1,10 @@
 /**
- * Target allocations — FR-3.
- *
- * Two rules define this module:
- *
- *  1. Targets are never updated in place. Changing a target writes a NEW row
- *     with a later `effectiveFrom`. That is what makes FR-7 answerable ("was I
- *     already overweight crypto a year ago?") — the variance at a past date has
- *     to be measured against the target that applied *then*, not today's.
- *
- *  2. Holding-level targets must sum to their bucket's target (FR-3,
- *     "validated on save"). Checked here rather than in the form alone, because
- *     a set of targets that doesn't add up makes every holding-level variance
- *     figure downstream quietly wrong.
- *
- * Percentages are compared as integer thousandths, matching Decimal(6,3).
- * `0.1 + 0.2 !== 0.3` would make a legitimate 40 / 30 / 30 split fail the sum
- * check roughly at random.
+ * Target allocations — FR-3, scoped per user.
  */
 
 import { db } from "@/lib/db";
 import { parseISODate, toISODate } from "@/lib/quarters";
+import { requireSessionUser } from "@/server/auth";
 import type { CreateTargetsInput } from "@/lib/validation";
 
 export interface TargetDTO {
@@ -54,18 +39,13 @@ function fromThousandths(value: number): string {
 /* Reads                                                                       */
 /* -------------------------------------------------------------------------- */
 
-/**
- * The target effective on `isoDate` for every bucket and holding.
- *
- * "Effective" means the latest row not after that date. Rows arrive newest
- * first, so the first sighting of a subject wins and older rows for it are
- * skipped.
- */
 export async function getEffectiveTargets(
   isoDate: string,
+  userIdParam?: string,
 ): Promise<EffectiveTargets> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const rows = await db.targetAllocation.findMany({
-    where: { effectiveFrom: { lte: parseISODate(isoDate) } },
+    where: { userId, effectiveFrom: { lte: parseISODate(isoDate) } },
     select: {
       bucketId: true,
       holdingId: true,
@@ -88,9 +68,10 @@ export async function getEffectiveTargets(
   return { byBucket, byHolding };
 }
 
-/** Every target row, newest first — the FR-3 "decision log" reading. */
-export async function listTargetHistory(): Promise<TargetDTO[]> {
+export async function listTargetHistory(userIdParam?: string): Promise<TargetDTO[]> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const rows = await db.targetAllocation.findMany({
+    where: { userId },
     orderBy: [{ effectiveFrom: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -112,9 +93,10 @@ export async function listTargetHistory(): Promise<TargetDTO[]> {
   }));
 }
 
-/** The dates on which targets changed — the "as of" picker's options (FR-7). */
-export async function listTargetEffectiveDates(): Promise<string[]> {
+export async function listTargetEffectiveDates(userIdParam?: string): Promise<string[]> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const rows = await db.targetAllocation.findMany({
+    where: { userId },
     distinct: ["effectiveFrom"],
     select: { effectiveFrom: true },
     orderBy: { effectiveFrom: "desc" },
@@ -130,18 +112,11 @@ export type SaveTargetsResult =
   | { ok: true; effectiveFrom: string; count: number }
   | { ok: false; error: string };
 
-/**
- * Save a set of targets, all sharing one `effectiveFrom`.
- *
- * Upsert on (subject, effectiveFrom) rather than blind insert: the schema's
- * `@@unique([bucketId, effectiveFrom])` means a second edit on the same
- * effective date replaces that row instead of creating an ambiguous pair. Edits
- * on a *later* date still create new rows, so history is preserved — it's only
- * "changed my mind before it took effect" that overwrites.
- */
 export async function saveTargets(
   input: CreateTargetsInput,
+  userIdParam?: string,
 ): Promise<SaveTargetsResult> {
+  const userId = userIdParam ?? (await requireSessionUser()).id;
   const bucketIds = input.targets
     .map((t) => t.bucketId)
     .filter((id): id is string => Boolean(id));
@@ -149,14 +124,14 @@ export async function saveTargets(
     .map((t) => t.holdingId)
     .filter((id): id is string => Boolean(id));
 
-  // --- Subjects must exist -------------------------------------------------
+  // --- Subjects must exist for this user -----------------------------------
   const [buckets, holdings] = await Promise.all([
     db.bucket.findMany({
-      where: { id: { in: bucketIds } },
+      where: { userId, id: { in: bucketIds } },
       select: { id: true, name: true },
     }),
     db.holding.findMany({
-      where: { id: { in: holdingIds } },
+      where: { userId, id: { in: holdingIds } },
       select: { id: true, ticker: true, bucketId: true },
     }),
   ]);
@@ -190,9 +165,7 @@ export async function saveTargets(
   }
 
   if (submittedHoldingSum.size > 0) {
-    // A bucket whose target isn't in this submission keeps whatever was already
-    // effective on that date — the holdings still have to add up to it.
-    const existing = await getEffectiveTargets(input.effectiveFrom);
+    const existing = await getEffectiveTargets(input.effectiveFrom, userId);
     const bucketNames = new Map(buckets.map((b) => [b.id, b.name]));
 
     for (const [bucketId, sum] of submittedHoldingSum) {
@@ -211,8 +184,6 @@ export async function saveTargets(
       }
 
       if (sum !== bucketTarget) {
-        // Named, with both figures: "they don't match" leaves the user to do
-        // the subtraction themselves.
         const name = bucketNames.get(bucketId) ?? "that bucket";
         return {
           ok: false,
@@ -230,12 +201,14 @@ export async function saveTargets(
       target.bucketId
         ? db.targetAllocation.upsert({
             where: {
-              bucketId_effectiveFrom: {
+              userId_bucketId_effectiveFrom: {
+                userId,
                 bucketId: target.bucketId,
                 effectiveFrom,
               },
             },
             create: {
+              userId,
               bucketId: target.bucketId,
               targetPct: target.targetPct,
               effectiveFrom,
@@ -248,12 +221,14 @@ export async function saveTargets(
           })
         : db.targetAllocation.upsert({
             where: {
-              holdingId_effectiveFrom: {
+              userId_holdingId_effectiveFrom: {
+                userId,
                 holdingId: target.holdingId!,
                 effectiveFrom,
               },
             },
             create: {
+              userId,
               holdingId: target.holdingId!,
               targetPct: target.targetPct,
               effectiveFrom,

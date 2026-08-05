@@ -60,7 +60,8 @@ enum UserStatus {
 /// src/lib/buckets.ts, so the palette stays §1.1's and no arbitrary hex leaks in.
 model Bucket {
   id         String    @id @default(cuid())
-  name       String    @unique
+  userId     String?
+  name       String
   colorToken String
   sortOrder  Int
   /// Retire a bucket without deleting the history that references it.
@@ -69,10 +70,12 @@ model Bucket {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  user     User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
   holdings Holding[]
   targets  TargetAllocation[]
 
-  @@index([sortOrder])
+  @@unique([userId, name])
+  @@index([userId, sortOrder])
 }
 
 /// One fund / ticker / asset — the grain the SRS §3 asks for ("track every
@@ -80,7 +83,8 @@ model Bucket {
 /// reporting").
 model Holding {
   id          String     @id @default(cuid())
-  ticker      String     @unique
+  userId      String?
+  ticker      String
   displayName String
   assetClass  AssetClass
   bucketId    String
@@ -107,12 +111,14 @@ model Holding {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bucket  Bucket             @relation(fields: [bucketId], references: [id])
+  user    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket  Bucket             @relation(fields: [bucketId], references: [id], onDelete: Cascade)
   entries QuarterEntry[]
   targets TargetAllocation[]
 
-  @@index([bucketId])
-  @@index([isActive, assetClass, sortOrder])
+  @@unique([userId, ticker])
+  @@index([userId, bucketId])
+  @@index([userId, isActive, assetClass, sortOrder])
 }
 
 /// A closed quarter.
@@ -124,10 +130,12 @@ model Holding {
 /// property of the quarter, not of any one holding's figure); and SRS §8's
 /// "clearly flagged as aggregated / pre-migration" data has somewhere to live.
 model Quarter {
+  id             String   @id @default(cuid())
+  userId         String?
   /// Identified by its END date: 2026-06-30 is Q2 2026 (src/lib/quarters.ts).
   /// @db.Date, not timestamp — a quarter end is a calendar day, and storing it
   /// with a time would reintroduce the timezone drift quarters.ts avoids.
-  quarterDate DateTime @id @db.Date
+  quarterDate    DateTime @db.Date
 
   /// SRS §8 — true for the six imported quarters whose figures are bucket-level
   /// only, so the dashboard can show continuous history while being honest that
@@ -137,7 +145,11 @@ model Quarter {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  user    User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   entries QuarterEntry[]
+
+  @@unique([userId, quarterDate])
+  @@index([userId, quarterDate])
 }
 
 /// One holding's value in one quarter. SRS §4: one row per holding per quarter,
@@ -145,8 +157,9 @@ model Quarter {
 /// per-ticker charts (FR-5) and rollups computed rather than hand-maintained.
 model QuarterEntry {
   id          String   @id @default(cuid())
-  quarterDate DateTime @db.Date
+  quarterId   String
   holdingId   String
+  quarterDate DateTime @db.Date
 
   /// GHS. Decimal(14,2) — pesewa-exact, and wide enough that the ceiling is
   /// never a consideration. FR-1 validates non-negative in the app layer.
@@ -155,12 +168,12 @@ model QuarterEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  quarter Quarter @relation(fields: [quarterDate], references: [quarterDate], onDelete: Cascade)
-  holding Holding @relation(fields: [holdingId], references: [id])
+  quarter Quarter @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+  holding Holding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
 
   /// FR-1: one figure per holding per quarter, enforced by the database rather
   /// than by whichever code path happens to write it.
-  @@unique([quarterDate, holdingId])
+  @@unique([quarterId, holdingId])
   /// FR-5 reads a single holding's whole history; this is the index for it.
   @@index([holdingId, quarterDate])
 }
@@ -176,7 +189,8 @@ model QuarterEntry {
 /// overweight crypto a year ago?"), which needs the target that was effective
 /// at *that* date, not today's.
 model TargetAllocation {
-  id String @id @default(cuid())
+  id        String   @id @default(cuid())
+  userId    String?
 
   bucketId  String?
   holdingId String?
@@ -195,14 +209,15 @@ model TargetAllocation {
 
   createdAt DateTime @default(now())
 
-  bucket  Bucket?  @relation(fields: [bucketId], references: [id])
-  holding Holding? @relation(fields: [holdingId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bucket  Bucket?  @relation(fields: [bucketId], references: [id], onDelete: Cascade)
+  holding Holding? @relation(fields: [holdingId], references: [id], onDelete: Cascade)
 
   /// One target per subject per effective date — a second edit on the same day
   /// replaces that row rather than creating an ambiguous pair.
-  @@unique([bucketId, effectiveFrom])
-  @@unique([holdingId, effectiveFrom])
-  @@index([effectiveFrom])
+  @@unique([userId, bucketId, effectiveFrom])
+  @@unique([userId, holdingId, effectiveFrom])
+  @@index([userId, effectiveFrom])
 }
 
 // ---------------------------------------------------------------------------
@@ -241,10 +256,14 @@ model User {
   /// Null only for the bootstrap Admin (SRS §4.1).
   invitedById String?
 
-  invitedBy      User?     @relation("UserInvites", fields: [invitedById], references: [id])
-  invitedUsers   User[]    @relation("UserInvites")
-  invitesCreated Invite[]  @relation("InviteCreatedBy")
+  invitedBy      User?              @relation("UserInvites", fields: [invitedById], references: [id])
+  invitedUsers   User[]             @relation("UserInvites")
+  invitesCreated Invite[]           @relation("InviteCreatedBy")
   sessions       Session[]
+  buckets        Bucket[]
+  holdings       Holding[]
+  quarters       Quarter[]
+  targets        TargetAllocation[]
 
   @@index([status])
 }
