@@ -86,7 +86,7 @@ export default function InvitePage({
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center py-12 px-4">
+    <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center px-4">
       <div className="w-full max-w-md border border-rule bg-paper-raised p-8">
         <div className="mb-6 text-center">
           <h1 className="type-display-lg m-0 text-ink">Account Setup</h1>
