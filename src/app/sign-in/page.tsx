@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ThreeDotsMove } from "@/components/ui/three-dots-move";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -94,7 +95,7 @@ export default function SignInPage() {
           </div>
 
           <Button type="submit" disabled={loading} className="w-full justify-center">
-            {loading ? "Signing in..." : "Sign in →"}
+            {loading ? <ThreeDotsMove /> : "Sign in →"}
           </Button>
         </form>
       </div>

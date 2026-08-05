@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/ui/states";
+import { ThreeDotsMove } from "@/components/ui/three-dots-move";
 
 export default function InvitePage({
   params,
@@ -138,7 +139,7 @@ export default function InvitePage({
           </div>
 
           <Button type="submit" disabled={submitting} className="w-full justify-center">
-            {submitting ? "Completing setup..." : "Complete Setup & Sign In"}
+            {submitting ? <ThreeDotsMove /> : "Complete Setup & Sign In"}
           </Button>
         </form>
       </div>

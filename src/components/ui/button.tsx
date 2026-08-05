@@ -23,8 +23,7 @@ const VARIANTS: Record<Variant, string> = {
 
 const BASE = [
   "type-body inline-flex items-center justify-center gap-2 rounded-soft",
-  // 44px min height keeps every button a legal tap target on mobile (§8.9).
-  "min-h-[44px] px-4 py-2 md:min-h-0 md:py-[10px]",
+  "min-h-[44px] h-[44px] px-4 py-2",
   "cursor-pointer no-underline",
   "transition-colors duration-[--duration-hover] ease-[--ease-confident]",
   "disabled:cursor-not-allowed disabled:opacity-50",
