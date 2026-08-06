@@ -19,7 +19,7 @@ export function LedgerTableScroll({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full max-w-full overflow-x-auto">{children}</div>
+    <div className="relative w-full max-w-full overflow-x-auto">{children}</div>
   );
 }
 
@@ -175,7 +175,7 @@ export function LedgerTd({
         // §8.6 — row height grows on touch for comfortable tap targets.
         "py-3 md:py-2 px-3 md:px-4",
         numeric ? "type-data text-right" : "type-body",
-        sticky && "sticky left-0 z-10 bg-inherit pl-0",
+        sticky && "sticky left-0 z-10 bg-paper pl-0",
         className,
       ]
         .filter(Boolean)
