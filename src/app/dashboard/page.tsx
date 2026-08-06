@@ -190,7 +190,7 @@ export default async function DashboardPage() {
       {/* §6.1.4 — two columns on desktop, stacked on mobile. */}
       <Section ruled={false}>
         <div className="grid grid-cols-1 gap-8 border-t border-rule pt-8 tablet:grid-cols-2">
-          <div>
+          <div className="min-w-0">
             <h2 className="type-display-md m-0 mb-4 text-ink">
               Portfolio Composition Over Time
             </h2>
@@ -206,7 +206,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <h2 className="type-display-md m-0 mb-1 text-ink">
               Current Allocation
             </h2>

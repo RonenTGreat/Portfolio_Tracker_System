@@ -110,6 +110,8 @@
 html {
   /* iOS bumps font size on rotate without this */
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -120,6 +122,8 @@ body {
   line-height: var(--type-body-lh);
   /* §1.2 — lining, fixed-width figures so magnitudes compare down a column */
   font-variant-numeric: tabular-nums lining-nums;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 /* §9 — visible keyboard focus on every interactive element, never removed

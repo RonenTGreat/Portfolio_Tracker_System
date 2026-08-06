@@ -19,7 +19,7 @@ export function LedgerTableScroll({
   children: React.ReactNode;
 }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">{children}</div>
+    <div className="w-full max-w-full overflow-x-auto">{children}</div>
   );
 }
 
@@ -34,7 +34,7 @@ export function LedgerTable({
   caption?: string;
 }) {
   return (
-    <table className={`w-full border-collapse ${className}`}>
+    <table className={`w-full min-w-[550px] border-collapse ${className}`}>
       {caption && <caption className="sr-only-ledger">{caption}</caption>}
       {children}
     </table>

@@ -360,7 +360,7 @@ export function HoldingsManager({
 
       {/* Holdings Table */}
       <div className="overflow-x-auto border border-rule bg-paper-raised">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full min-w-[700px] text-left border-collapse">
           <thead>
             <tr className="border-b border-rule bg-paper text-ink-soft type-body-sm font-medium">
               <th className="px-4 py-3">Ticker</th>

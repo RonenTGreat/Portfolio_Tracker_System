@@ -45,7 +45,7 @@ export function AppShell({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden">
       <NavRail
         isAdmin={isAdmin}
         isCollapsed={isCollapsed}
@@ -55,13 +55,13 @@ export function AppShell({
 
       <div
         className={[
-          "transition-[padding] duration-300 ease-[--ease-confident]",
+          "w-full max-w-full overflow-x-hidden transition-[padding] duration-300 ease-[--ease-confident]",
           isCollapsed ? "md:pl-[60px]" : "md:pl-[200px]",
         ].join(" ")}
       >
         <TopBar />
         <main
-          className="mx-auto max-w-[1200px] px-4 pt-6 pb-[calc(72px+env(safe-area-inset-bottom)+16px)] md:px-8 md:pt-8 md:pb-16"
+          className="mx-auto w-full max-w-[1200px] min-w-0 overflow-x-hidden px-4 pt-6 pb-[calc(72px+env(safe-area-inset-bottom)+16px)] md:px-8 md:pt-8 md:pb-16"
         >
           {children}
         </main>

@@ -63,7 +63,7 @@ export default async function SingleHoldingPage({
       <section className="border border-rule bg-paper-raised p-6">
         <h2 className="type-display-md mb-4 text-ink">Quarterly Values</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[400px] text-left border-collapse">
             <thead>
               <tr className="border-b border-rule bg-paper text-ink-soft type-body-sm font-medium">
                 <th className="px-4 py-3">Quarter</th>
