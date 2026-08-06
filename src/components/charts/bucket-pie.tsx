@@ -120,7 +120,7 @@ export function BucketPie({
             nameKey="label"
             /* Percentages sit in a ring outside the pie (§4), so the radius
                leaves room for them rather than filling the container. */
-            outerRadius="68%"
+            outerRadius="55%"
             isAnimationActive={false}
             /* §4 — no depth effect, no shadow, hairline paper gap. */
             stroke="var(--color-paper)"

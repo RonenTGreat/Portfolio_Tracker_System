@@ -37,6 +37,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
+  width: "device-width",
+  initialScale: 1,
   // §8.2 — the bottom nav bar respects env(safe-area-inset-bottom), which
   // requires viewport-fit=cover to be meaningful on iOS.
   viewportFit: "cover" as const,

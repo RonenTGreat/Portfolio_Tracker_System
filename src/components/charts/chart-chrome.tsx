@@ -181,16 +181,16 @@ export function ChartFigure({
   );
 
   return (
-    <figure className="m-0">
+    <figure className="m-0 w-full max-w-full overflow-hidden">
       <figcaption className="sr-only-ledger">
         {title}
         {summary ? `. ${summary}` : ""}
       </figcaption>
       {minWidth ? (
         // Scroll the chart only, never the page (§8.6's rule, same reasoning).
-        <div className="overflow-x-auto">{chart}</div>
+        <div className="w-full max-w-full overflow-x-auto overflow-y-hidden">{chart}</div>
       ) : (
-        chart
+        <div className="w-full max-w-full overflow-hidden">{chart}</div>
       )}
       <div className="sr-only-ledger">{table}</div>
     </figure>

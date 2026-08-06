@@ -56,7 +56,7 @@ function Side({
     // since equal size is what makes the shape comparison meaningful". basis-0
     // is what enforces that: with the default `basis-auto`, a side whose legend
     // labels are longer would claim more width and draw a larger pie.
-    <div className="flex min-w-0 flex-1 basis-0 flex-col items-center">
+    <div className="flex w-full max-w-full min-w-0 flex-1 basis-0 flex-col items-center overflow-hidden">
       {/* §6.4.3 — "each captioned by its quarter stamp". */}
       {side.quarterDate ? (
         <QuarterStamp
@@ -75,7 +75,7 @@ function Side({
         <p className="type-body-sm m-0 text-ink-soft">{side.subcaption}</p>
       )}
 
-      <div className="mt-2 w-full">
+      <div className="mt-2 w-full max-w-full overflow-hidden">
         {side.slices.length === 0 ? (
           <p className="type-body-sm py-12 text-center text-ink-soft">
             {side.emptyMessage ?? "Nothing recorded for this quarter."}
@@ -125,17 +125,17 @@ export function PairedPies({
   }
 
   return (
-    <>
+    <div className="w-full max-w-full overflow-hidden">
       {/* §8.8 — "Side-by-side quarter panels and paired pies stack vertically
           below --bp-mobile, each keeping its own stamp header." At 768px each
           side still gets ~370px, which a 260px pie and its labels fit; below
           that, two side-by-side pies would be smaller than their own labels. */}
-      <div className="flex flex-col gap-8 mobile:flex-row mobile:gap-6">
+      <div className="flex w-full max-w-full flex-col gap-8 mobile:flex-row mobile:gap-6">
         <Side side={left} subjectHeading={subjectHeading} />
         <Side side={right} subjectHeading={subjectHeading} />
       </div>
       <ChartLegend items={legendItems} />
-    </>
+    </div>
   );
 }
 
