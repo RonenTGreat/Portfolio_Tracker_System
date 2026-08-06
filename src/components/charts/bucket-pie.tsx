@@ -126,10 +126,10 @@ export function BucketPie({
             stroke="var(--color-paper)"
             strokeWidth={1}
             labelLine={{ stroke: "var(--color-rule)", strokeWidth: 1 }}
-            label={(props: { percent?: number; name?: string }) => {
+            label={(props: { percent?: number }) => {
               const pct = (props.percent ?? 0) * 100;
               if (pct < LABEL_THRESHOLD_PCT) return null;
-              return `${props.name} ${formatPct(pct)}`;
+              return formatPct(pct);
             }}
             onClick={
               onSliceClick

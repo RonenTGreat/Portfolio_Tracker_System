@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { NavRail } from "./nav-rail";
 import { BottomBar } from "./bottom-bar";
 import { TopBar } from "./top-bar";
+import { ScrollToTop } from "@/components/ui/scroll-to-top";
 
 export function AppShell({
   children,
@@ -14,6 +16,23 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const isAuthPage = pathname === "/sign-in" || pathname.startsWith("/invite");
+
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("sidebar_collapsed");
+    if (stored !== null) {
+      setIsCollapsed(stored === "true");
+    }
+  }, []);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   if (isAuthPage) {
     return (
@@ -27,10 +46,19 @@ export function AppShell({
 
   return (
     <div className="min-h-screen">
-      <NavRail isAdmin={isAdmin} />
+      <NavRail
+        isAdmin={isAdmin}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={toggleCollapse}
+      />
       <BottomBar isAdmin={isAdmin} />
 
-      <div className="md:pl-[240px]">
+      <div
+        className={[
+          "transition-[padding] duration-300 ease-[--ease-confident]",
+          isCollapsed ? "md:pl-[60px]" : "md:pl-[200px]",
+        ].join(" ")}
+      >
         <TopBar />
         <main
           className="mx-auto max-w-[1200px] px-4 pt-6 pb-[calc(72px+env(safe-area-inset-bottom)+16px)] md:px-8 md:pt-8 md:pb-16"
@@ -38,6 +66,7 @@ export function AppShell({
           {children}
         </main>
       </div>
+      <ScrollToTop />
     </div>
   );
 }

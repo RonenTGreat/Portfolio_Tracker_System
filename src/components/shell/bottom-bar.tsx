@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "./nav-items";
+import { getNavIcon } from "./nav-icons";
 
 /**
  * Mobile bottom bar — design §8.2.
@@ -28,14 +29,16 @@ export function BottomBar({ isAdmin = false }: { isAdmin?: boolean }) {
       <ul className="m-0 flex list-none items-center justify-around p-0 overflow-x-auto">
         {items.map((item) => {
           const active = pathname.startsWith(item.href);
+          const icon = getNavIcon(item.href, "w-4 h-4 mb-0.5");
+
           return (
             <li key={item.href} className="flex-1 min-w-[60px]">
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "relative flex min-h-[44px] items-center justify-center px-1 py-3 text-center",
-                  "type-body-sm no-underline transition-colors",
+                  "relative flex min-h-[48px] flex-col items-center justify-center px-1 py-1.5 text-center",
+                  "no-underline transition-colors",
                   "duration-[--duration-hover] ease-[--ease-confident]",
                   active ? "text-ink font-medium" : "text-ink-soft",
                 ].join(" ")}
@@ -46,7 +49,10 @@ export function BottomBar({ isAdmin = false }: { isAdmin?: boolean }) {
                     className="absolute inset-x-0 top-0 h-[3px] bg-brass"
                   />
                 )}
-                {item.label}
+                {icon}
+                <span className="text-[11px] leading-tight truncate max-w-[64px]">
+                  {item.label}
+                </span>
               </Link>
             </li>
           );
