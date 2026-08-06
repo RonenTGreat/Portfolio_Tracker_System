@@ -56,7 +56,7 @@ function Side({
     // since equal size is what makes the shape comparison meaningful". basis-0
     // is what enforces that: with the default `basis-auto`, a side whose legend
     // labels are longer would claim more width and draw a larger pie.
-    <div className="flex w-full max-w-full min-w-0 flex-1 basis-0 flex-col items-center overflow-hidden">
+    <div className="flex w-full max-w-full min-w-0 flex-1 mobile:basis-0 flex-col items-center overflow-hidden">
       {/* §6.4.3 — "each captioned by its quarter stamp". */}
       {side.quarterDate ? (
         <QuarterStamp

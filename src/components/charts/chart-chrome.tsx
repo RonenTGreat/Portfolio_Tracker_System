@@ -175,7 +175,7 @@ export function ChartFigure({
   children: ReactNode;
 }) {
   const chart = (
-    <div aria-hidden="true" style={{ height, minWidth }}>
+    <div aria-hidden="true" className="w-full" style={{ height, minHeight: height, minWidth }}>
       {children}
     </div>
   );
