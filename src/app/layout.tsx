@@ -46,6 +46,7 @@ export const viewport = {
 };
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { PageNavigationLoader } from "@/components/ui/page-navigation-loader";
 
 export default async function RootLayout({
   children,
@@ -77,6 +78,7 @@ export default async function RootLayout({
       </head>
       <body>
         <ThemeProvider>
+          <PageNavigationLoader />
           <AppShell isAdmin={isAdmin}>{children}</AppShell>
         </ThemeProvider>
       </body>

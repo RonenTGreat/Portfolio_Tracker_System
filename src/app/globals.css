@@ -348,3 +348,38 @@ body {
     transform: translate(-50%, -50%);
   }
 }
+
+/* ============================================================================
+   ThreeDotsMove color cycling animation using Design Tokens (§10)
+   ========================================================================== */
+
+@keyframes three-dots-color-cycle {
+  0%, 100% {
+    fill: var(--color-ledger-green);
+  }
+  20% {
+    fill: var(--color-brass);
+  }
+  40% {
+    fill: var(--color-slate);
+  }
+  60% {
+    fill: var(--color-ledger-red);
+  }
+  80% {
+    fill: var(--color-brass-deep);
+  }
+}
+
+.animate-dot-color-1 {
+  animation: three-dots-color-cycle 2.4s infinite ease-in-out 0s;
+}
+
+.animate-dot-color-2 {
+  animation: three-dots-color-cycle 2.4s infinite ease-in-out 0.25s;
+}
+
+.animate-dot-color-3 {
+  animation: three-dots-color-cycle 2.4s infinite ease-in-out 0.5s;
+}
+
