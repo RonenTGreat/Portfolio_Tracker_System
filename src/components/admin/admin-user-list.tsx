@@ -91,7 +91,7 @@ export function AdminUserList({
   return (
     <div className="space-y-8">
       {/* Invite Form */}
-      <section className="border border-rule bg-paper-raised p-6">
+      <section className="border border-rule bg-paper-raised py-6 px-3 lg:p-6">
         <h2 className="type-display-md mb-2 text-ink">Invite New Account</h2>
         <p className="type-body-sm mb-4 text-ink-soft">
           Generates a single-use setup link valid for 7 days. Send the link to the user manually.
