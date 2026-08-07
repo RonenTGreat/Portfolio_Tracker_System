@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThreeDotsMove } from "@/components/ui/three-dots-move";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -42,7 +43,10 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-120px)] flex-col items-center justify-center px-2 lg:px-4">
+    <div className="relative flex min-h-[calc(100vh-120px)] flex-col items-center justify-center px-2 lg:px-4">
+      <div className="absolute top-4 right-4 md:top-8 md:right-8">
+        <ThemeToggle isCollapsed={true} />
+      </div>
       <div className="w-full max-w-md border border-rule bg-paper-raised p-2 shadow-none lg:p-8">
         <div className="mb-6 text-center">
           <h1 className="type-display-lg m-0 text-ink">Ledger</h1>

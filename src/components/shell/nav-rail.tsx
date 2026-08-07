@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { NAV_ITEMS, WORDMARK } from "./nav-items";
 import { getNavIcon, SignOutIcon, ToggleChevronIcon } from "./nav-icons";
 
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+
 export function NavRail({
   isAdmin = false,
   isCollapsed = false,
@@ -149,8 +151,9 @@ export function NavRail({
         </ul>
       </div>
 
-      {/* Sign Out Button */}
-      <div className={["border-t border-rule mt-auto shrink-0", isCollapsed ? "p-1.5 flex justify-center pb-2.5" : "p-2 pb-2.5"].join(" ")}>
+      {/* Footer Controls: Theme Toggle & Sign Out */}
+      <div className={["border-t border-rule mt-auto shrink-0 space-y-1", isCollapsed ? "p-1.5 flex flex-col items-center pb-2.5" : "p-2 pb-2.5"].join(" ")}>
+        <ThemeToggle isCollapsed={isCollapsed} />
         <button
           type="button"
           onClick={handleSignOut}

@@ -8,28 +8,17 @@
 
 @theme {
   /* --- §1.1 Palette ------------------------------------------------------ */
-  --color-paper: #efede4; /* page background, dulled bone */
-  --color-paper-raised: #f7f5ee; /* inputs + surfaces; the ONLY elevation cue */
-  --color-ink: #1b2a3a; /* primary text, rules, primary buttons */
-  --color-ink-soft: #57616e; /* secondary text, captions, inactive nav */
-  --color-brass: #b08d3e; /* accent: stamp, active states, mutual funds */
-  --color-ledger-green: #2f5d45; /* positive, growth, emergency fund */
-  --color-ledger-red: #9c3b2e; /* negative, over-target, crypto */
-  --color-slate: #5b7a8c; /* t-bills, focus rings, under-target */
-  --color-rule: #d9d4c4; /* hairline dividers and table rules */
-
-  /* Contrast-safe companions. §9 asks that tokens be verified against the final
-     background hex and darkened if they miss — these are the results of
-     scripts/check-contrast.mjs, not guesses.
-
-       --brass  #B08D3E  2.66:1 on paper — fails even the 3:1 graphical bar
-       --slate  #5B7A8C  3.89:1 on paper — passes 3:1, fails 4.5:1 for text
-
-     So each keeps its original token for large chart fills (where §9's
-     "never colour alone" rule means a text label always carries the meaning
-     too) and gains a deeper companion for anywhere it carries text. */
-  --color-brass-deep: #7d6329; /* 4.85:1 on paper — stamp, button hover fill */
-  --color-slate-deep: #536f7f; /* 4.53:1 on paper — under-target badge text */
+  --color-paper: var(--color-paper);
+  --color-paper-raised: var(--color-paper-raised);
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-brass: var(--color-brass);
+  --color-ledger-green: var(--color-ledger-green);
+  --color-ledger-red: var(--color-ledger-red);
+  --color-slate: var(--color-slate);
+  --color-rule: var(--color-rule);
+  --color-brass-deep: var(--color-brass-deep);
+  --color-slate-deep: var(--color-slate-deep);
 
   /* --- §1.2 Typefaces ---------------------------------------------------- */
   --font-display: var(--font-fraunces), Georgia, serif;
@@ -56,13 +45,25 @@
 }
 
 /* ============================================================================
-   §1.2 + §8.3 Type scale
-   Defined as plain custom properties (not @theme) so the mobile step-down in
-   §8.3 can override them at a breakpoint. Only display roles shrink; body and
-   data roles are unchanged, per the spec.
+   §1.2 + §8.3 Type scale & Color Palette Variables
+   Defined as plain custom properties so light/dark mode and mobile step-down
+   can override them at runtime.
    ========================================================================== */
 
 :root {
+  /* Light Mode Palette (Default) */
+  --color-paper: #efede4; /* page background, dulled bone */
+  --color-paper-raised: #f7f5ee; /* inputs + surfaces; the ONLY elevation cue */
+  --color-ink: #1b2a3a; /* primary text, rules, primary buttons */
+  --color-ink-soft: #57616e; /* secondary text, captions, inactive nav */
+  --color-brass: #b08d3e; /* accent: stamp, active states, mutual funds */
+  --color-ledger-green: #2f5d45; /* positive, growth, emergency fund */
+  --color-ledger-red: #9c3b2e; /* negative, over-target, crypto */
+  --color-slate: #5b7a8c; /* t-bills, focus rings, under-target */
+  --color-rule: #d9d4c4; /* hairline dividers and table rules */
+  --color-brass-deep: #7d6329; /* stamp, button hover fill */
+  --color-slate-deep: #536f7f; /* under-target badge text */
+
   --type-display-xl: 3.5rem;
   --type-display-xl-lh: 1.05;
   --type-display-lg: 2.25rem;
@@ -86,6 +87,21 @@
 
   /* §4 tolerance band for target drift, in percentage points */
   --variance-tolerance: 5;
+}
+
+.dark {
+  /* Dark Mode Palette */
+  --color-paper: #0d141c; /* page background, dark slate ledger */
+  --color-paper-raised: #182230; /* inputs + elevated cards */
+  --color-ink: #f0f4f8; /* primary text */
+  --color-ink-soft: #94a3b8; /* secondary text, captions, inactive nav */
+  --color-brass: #d97706; /* accent: stamp, active states */
+  --color-ledger-green: #4ade80; /* positive, growth */
+  --color-ledger-red: #f87171; /* negative, over-target */
+  --color-slate: #94a3b8; /* t-bills, focus rings */
+  --color-rule: #263545; /* hairline dividers and table rules */
+  --color-brass-deep: #f59e0b; /* stamp, button hover fill */
+  --color-slate-deep: #cbd5e1; /* under-target badge text */
 }
 
 /* §8.3 — desktop sizes are tuned for a 1200px canvas and are too large on a

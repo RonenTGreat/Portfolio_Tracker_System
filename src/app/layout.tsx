@@ -45,19 +45,40 @@ export const viewport = {
   themeColor: "#efede4",
 };
 
+import { ThemeProvider } from "@/components/theme/theme-provider";
+
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await getSessionUser();
   const isAdmin = user?.role === "ADMIN";
 
+  const themeScript = `
+    (function() {
+      try {
+        var stored = localStorage.getItem('portfolio_theme');
+        if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) {}
+    })();
+  `;
+
   return (
     <html
       lang="en"
       className={`${fraunces.variable} ${plexSans.variable} ${plexMono.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
-        <AppShell isAdmin={isAdmin}>{children}</AppShell>
+        <ThemeProvider>
+          <AppShell isAdmin={isAdmin}>{children}</AppShell>
+        </ThemeProvider>
       </body>
     </html>
   );

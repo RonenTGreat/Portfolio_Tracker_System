@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { WORDMARK } from "./nav-items";
-import {SignOutIcon} from "./nav-icons"
+import { SignOutIcon } from "./nav-icons";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function TopBar() {
   const pathname = usePathname();
@@ -30,13 +31,18 @@ export function TopBar() {
         {WORDMARK}
       </Link>
 
-      <button
-        type="button"
-        onClick={handleSignOut}
-        className="type-body-sm text-ink-soft hover:text-ledger-red transition-colors"
-      >
-        <SignOutIcon className = "w-3 h-3" />
-      </button>
+      <div className="flex items-center gap-2">
+        <ThemeToggle iconSize={20} isCollapsed={true} />
+        <button
+          type="button"
+          onClick={handleSignOut}
+          title="Sign Out"
+          aria-label="Sign Out"
+          className="p-1 rounded-md text-ink-soft hover:text-ledger-red transition-colors cursor-pointer"
+        >
+          <SignOutIcon className="w-3 h-3 shrink-0" />
+        </button>
+      </div>
     </header>
   );
 }
