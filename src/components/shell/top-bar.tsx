@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { WORDMARK } from "./nav-items";
+import {SignOutIcon} from "./nav-icons"
 
 export function TopBar() {
   const pathname = usePathname();
@@ -34,7 +35,7 @@ export function TopBar() {
         onClick={handleSignOut}
         className="type-body-sm text-ink-soft hover:text-ledger-red transition-colors"
       >
-        Sign Out →
+        <SignOutIcon className = "w-3 h-3" />
       </button>
     </header>
   );

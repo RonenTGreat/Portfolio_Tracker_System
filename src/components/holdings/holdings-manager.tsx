@@ -180,7 +180,7 @@ export function HoldingsManager({
 
       {/* Reporting Buckets Overview */}
       <div className="border border-rule bg-paper-raised p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2.5">
           <div className="type-body-sm font-medium text-ink">Reporting Buckets</div>
           <span className="type-body-sm text-ink-soft">
             Archiving a bucket removes it from new holding creation while preserving historical data.
