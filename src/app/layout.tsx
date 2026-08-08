@@ -34,6 +34,13 @@ const plexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Ledger — Portfolio Tracker",
   description: "A quarterly record of holdings, targets, and drift.",
+  icons: {
+    icon: [
+      { url: "/icon.png" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: "/icon.png",
+  },
 };
 
 export const viewport = {
