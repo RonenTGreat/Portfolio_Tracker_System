@@ -163,7 +163,7 @@ export function NavRail({
             "flex items-center text-ink-soft hover:text-ledger-red transition-all cursor-pointer",
             isCollapsed
               ? "justify-center w-7 h-7 rounded-md"
-              : "w-full gap-2.5 px-2.5 py-1.5 text-[13px] text-left rounded-md hover:bg-paper-raised/70",
+              : "w-full gap-2.5 px-2.5 py-0.5 text-[13px] text-left rounded-md hover:bg-paper-raised/70",
           ].join(" ")}
         >
           <SignOutIcon className={isCollapsed ? "w-[14px] h-[14px] shrink-0" : "w-4 h-4 shrink-0"} />

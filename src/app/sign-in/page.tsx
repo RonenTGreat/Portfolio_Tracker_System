@@ -13,33 +13,46 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function performSignIn(signInEmail: string, signInPass: string) {
     setError(null);
-    setLoading(true);
-
     try {
       const res = await fetch("/api/auth/sign-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: signInEmail, password: signInPass }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error || "Sign in failed. Check your details and try again.");
-        setLoading(false);
-        return;
+        return false;
       }
 
       router.push("/dashboard");
       router.refresh();
+      return true;
     } catch {
       setError("Couldn't reach the server. Please check your connection and try again.");
-      setLoading(false);
+      return false;
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    await performSignIn(email, password);
+    setLoading(false);
+  }
+
+  async function handleDemoSignIn() {
+    setDemoLoading(true);
+    const demoEmail = process.env.NEXT_PUBLIC_DEMO_USER_EMAIL || "demo@example.com";
+    const demoPassword = process.env.NEXT_PUBLIC_DEMO_USER_PASSWORD || "DemoUser123456!";
+    await performSignIn(demoEmail, demoPassword);
+    setDemoLoading(false);
   }
 
   return (
@@ -97,10 +110,43 @@ export default function SignInPage() {
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full justify-center">
+          <Button type="submit" disabled={loading || demoLoading} className="w-full justify-center">
             {loading ? <ThreeDotsMove /> : "Sign in →"}
           </Button>
         </form>
+
+        <div className="relative my-6 text-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-rule" />
+          </div>
+          <div className="relative inline-block bg-paper-raised px-3 type-body-sm text-ink-soft">
+            or test with pre-seeded data
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <button
+            type="button"
+            disabled={loading || demoLoading}
+            onClick={handleDemoSignIn}
+            className="group flex h-[44px] w-full items-center justify-center gap-2 rounded-soft border border-brass/50 bg-paper px-3 type-body-sm font-medium text-ink transition-all duration-150 hover:border-brass hover:bg-brass/10 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+          >
+            {demoLoading ? (
+              <ThreeDotsMove />
+            ) : (
+              <>
+                <span className="h-2 w-2 rounded-full bg-brass shrink-0" />
+                <span className="text-sm">Demo Account</span>
+                <span className="rounded bg-brass/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brass-deep dark:text-brass shrink-0">
+                  User Role
+                </span>
+                <span className="transition-transform duration-150 group-hover:translate-x-0.5 text-brass shrink-0">
+                  →
+                </span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

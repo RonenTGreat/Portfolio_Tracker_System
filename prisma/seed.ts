@@ -237,40 +237,79 @@ export async function seedUserPortfolioStructure(
 /* -------------------------------------------------------------------------- */
 
 async function main() {
-  // --- Bootstrap admin (FR-9.1) --------------------------------------------
-  const email = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+  // --- Demo User (USER role) -----------------------------------------------
+  const demoEmail = (
+    process.env.DEMO_USER_EMAIL ||
+    process.env.NEXT_PUBLIC_DEMO_USER_EMAIL ||
+    "demo@example.com"
+  ).trim().toLowerCase();
+  const demoPassword =
+    process.env.DEMO_USER_PASSWORD ||
+    process.env.NEXT_PUBLIC_DEMO_USER_PASSWORD ||
+    "DemoUser123456!";
 
-  if (!email || !password) {
+  let demoUser = await db.user.findUnique({ where: { email: demoEmail } });
+  if (!demoUser) {
+    demoUser = await db.user.create({
+      data: {
+        email: demoEmail,
+        passwordHash: await hashPassword(demoPassword),
+        role: "USER",
+        status: "ACTIVE",
+        name: "Demo User",
+      },
+    });
+    console.log(`Demo user created: ${demoEmail}`);
+  } else {
+    // Ensure demo user has role USER and status ACTIVE
+    demoUser = await db.user.update({
+      where: { id: demoUser.id },
+      data: { role: "USER", status: "ACTIVE" },
+    });
+    console.log(`Demo user existing updated: ${demoEmail}`);
+  }
+
+  const userId = demoUser.id;
+
+  // --- Bootstrap admin (FR-9.1) --------------------------------------------
+  const adminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+
+  if (adminEmail && adminPassword) {
+    let adminUser = await db.user.findUnique({ where: { email: adminEmail } });
+    if (!adminUser) {
+      if (adminPassword.length < 12) {
+        throw new Error("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters.");
+      }
+      adminUser = await db.user.create({
+        data: {
+          email: adminEmail,
+          passwordHash: await hashPassword(adminPassword),
+          role: "ADMIN",
+          status: "ACTIVE",
+          name: "Admin User",
+        },
+      });
+      console.log(`Bootstrap admin created: ${adminEmail}`);
+    } else {
+      console.log(`Bootstrap admin: ${adminEmail} already exists.`);
+    }
+
+    // Ensure no portfolio data exists for admin account
+    await db.bucket.deleteMany({ where: { userId: adminUser.id } });
+    await db.holding.deleteMany({ where: { userId: adminUser.id } });
+    await db.quarter.deleteMany({ where: { userId: adminUser.id } });
+    await db.targetAllocation.deleteMany({ where: { userId: adminUser.id } });
+    console.log(`Cleared all portfolio data for admin ${adminEmail}`);
+  } else {
     console.log(
       "Bootstrap admin: skipped — set BOOTSTRAP_ADMIN_EMAIL and BOOTSTRAP_ADMIN_PASSWORD to create it.",
     );
-    return;
   }
 
-  let adminUser = await db.user.findUnique({ where: { email } });
-  if (!adminUser) {
-    if (password.length < 12) {
-      throw new Error("BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters.");
-    }
-    adminUser = await db.user.create({
-      data: {
-        email,
-        passwordHash: await hashPassword(password),
-        role: "ADMIN",
-        status: "ACTIVE",
-      },
-    });
-    console.log(`Bootstrap admin created: ${email}`);
-  } else {
-    console.log(`Bootstrap admin: ${email} already exists.`);
-  }
-
-  const userId = adminUser.id;
-
-  // --- Buckets & Holdings for Admin -----------------------------------------
+  // --- Buckets & Holdings for Demo User -------------------------------------
   await seedUserPortfolioStructure(db, userId);
-  console.log(`Buckets & Holdings seeded for user ${email}`);
+  console.log(`Buckets & Holdings seeded for demo user ${demoEmail}`);
 
   const userBuckets = await db.bucket.findMany({
     where: { userId },
@@ -335,7 +374,7 @@ async function main() {
       });
     }
   }
-  console.log(`Target allocations seeded for user ${email}`);
+  console.log(`Target allocations seeded for user ${demoEmail}`);
 
   // --- Historical Quarters & Entries for Admin ------------------------------
   const DEMO_QUARTERS: Array<{
@@ -497,7 +536,7 @@ async function main() {
       }
     }
   }
-  console.log(`Quarter entries seeded for ${email}: ${totalEntriesWritten} entries across ${DEMO_QUARTERS.length} quarters.`);
+  console.log(`Quarter entries seeded for ${demoEmail}: ${totalEntriesWritten} entries across ${DEMO_QUARTERS.length} quarters.`);
 }
 
 main()
