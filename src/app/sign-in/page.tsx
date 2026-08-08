@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThreeDotsMove } from "@/components/ui/three-dots-move";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { triggerPageLoader } from "@/components/ui/page-navigation-loader";
 
 export default function SignInPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +29,9 @@ export default function SignInPage() {
         return false;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      // Trigger seamless full-page loader transition and navigate immediately
+      triggerPageLoader();
+      window.location.href = "/dashboard";
       return true;
     } catch {
       setError("Couldn't reach the server. Please check your connection and try again.");
@@ -43,16 +42,20 @@ export default function SignInPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    await performSignIn(email, password);
-    setLoading(false);
+    const success = await performSignIn(email, password);
+    if (!success) {
+      setLoading(false);
+    }
   }
 
   async function handleDemoSignIn() {
     setDemoLoading(true);
     const demoEmail = process.env.NEXT_PUBLIC_DEMO_USER_EMAIL || "demo@example.com";
     const demoPassword = process.env.NEXT_PUBLIC_DEMO_USER_PASSWORD || "DemoUser123456!";
-    await performSignIn(demoEmail, demoPassword);
-    setDemoLoading(false);
+    const success = await performSignIn(demoEmail, demoPassword);
+    if (!success) {
+      setDemoLoading(false);
+    }
   }
 
   return (
