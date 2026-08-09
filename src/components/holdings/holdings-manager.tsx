@@ -49,6 +49,16 @@ export function HoldingsManager({
   const [editBucketError, setEditBucketError] = useState<string | null>(null);
   const [editBucketSubmitting, setEditBucketSubmitting] = useState(false);
 
+  // Edit Holding Form state
+  const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
+  const [editTicker, setEditTicker] = useState("");
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editAssetClass, setEditAssetClass] = useState<AssetClass>("ETF");
+  const [editHoldingBucketId, setEditHoldingBucketId] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editHoldingError, setEditHoldingError] = useState<string | null>(null);
+  const [editHoldingSubmitting, setEditHoldingSubmitting] = useState(false);
+
   async function handleAddHolding(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -120,6 +130,7 @@ export function HoldingsManager({
   function startEditingBucket(b: BucketDTO) {
     setShowAddForm(false);
     setShowAddBucketForm(false);
+    setEditingHoldingId(null);
     setEditingBucketId(b.id);
     setEditBucketName(b.name);
     setEditColorToken(b.colorToken as BucketColorToken);
@@ -167,6 +178,55 @@ export function HoldingsManager({
       setEditBucketError("Network error updating bucket.");
     } finally {
       setEditBucketSubmitting(false);
+    }
+  }
+
+  function startEditingHolding(h: HoldingDTO) {
+    setShowAddForm(false);
+    setShowAddBucketForm(false);
+    setEditingBucketId(null);
+    setEditingHoldingId(h.id);
+    setEditTicker(h.ticker);
+    setEditDisplayName(h.displayName);
+    setEditAssetClass(h.assetClass);
+    setEditHoldingBucketId(h.bucketId);
+    setEditNotes(h.notes || "");
+    setEditHoldingError(null);
+  }
+
+  async function handleEditHolding(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingHoldingId) return;
+    setEditHoldingError(null);
+    setEditHoldingSubmitting(true);
+
+    try {
+      const res = await fetch(`/api/holdings/${editingHoldingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ticker: editTicker,
+          displayName: editDisplayName,
+          assetClass: editAssetClass,
+          bucketId: editHoldingBucketId,
+          notes: editNotes || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setEditHoldingError(data.error || "Failed to update holding.");
+      } else {
+        const updatedHolding: HoldingDTO = data.holding;
+        setHoldings((prev) =>
+          prev.map((h) => (h.id === updatedHolding.id ? updatedHolding : h)),
+        );
+        setEditingHoldingId(null);
+      }
+    } catch {
+      setEditHoldingError("Network error updating holding.");
+    } finally {
+      setEditHoldingSubmitting(false);
     }
   }
 
@@ -223,6 +283,7 @@ export function HoldingsManager({
             onClick={() => {
               setShowAddForm(false);
               setEditingBucketId(null);
+              setEditingHoldingId(null);
               setShowAddBucketForm(!showAddBucketForm);
             }}
           >
@@ -232,6 +293,7 @@ export function HoldingsManager({
             onClick={() => {
               setShowAddBucketForm(false);
               setEditingBucketId(null);
+              setEditingHoldingId(null);
               setShowAddForm(!showAddForm);
             }}
           >
@@ -346,6 +408,118 @@ export function HoldingsManager({
               type="button"
               variant="secondary"
               onClick={() => setEditingBucketId(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {/* Edit Holding Form */}
+      {editingHoldingId && (
+        <form onSubmit={handleEditHolding} className="border border-rule bg-paper-raised p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="type-display-md text-ink m-0">Edit Holding</h3>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditingHoldingId(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+          {editHoldingError && (
+            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+              {editHoldingError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="editTicker" className="type-body-sm block mb-1 font-medium text-ink">
+                Ticker / Symbol
+              </label>
+              <Input
+                id="editTicker"
+                required
+                value={editTicker}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTicker(e.target.value)}
+                placeholder="e.g. VOO"
+                className="w-full font-mono"
+              />
+            </div>
+            <div>
+              <label htmlFor="editDisplayName" className="type-body-sm block mb-1 font-medium text-ink">
+                Display Name
+              </label>
+              <Input
+                id="editDisplayName"
+                required
+                value={editDisplayName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDisplayName(e.target.value)}
+                placeholder="e.g. Vanguard S&P 500 ETF"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="editAssetClass" className="type-body-sm block mb-1 font-medium text-ink">
+                Asset Class
+              </label>
+              <select
+                id="editAssetClass"
+                value={editAssetClass}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditAssetClass(e.target.value as AssetClass)}
+                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+              >
+                <option value="ETF">ETF</option>
+                <option value="MUTUAL_FUND">Mutual Fund</option>
+                <option value="CRYPTO">Crypto</option>
+                <option value="CASH_SAFETY">Cash & Safety</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="editHoldingBucketId" className="type-body-sm block mb-1 font-medium text-ink">
+                Reporting Bucket
+              </label>
+              <select
+                id="editHoldingBucketId"
+                value={editHoldingBucketId || activeBuckets[0]?.id}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditHoldingBucketId(e.target.value)}
+                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+              >
+                {activeBuckets.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="editNotes" className="type-body-sm block mb-1 font-medium text-ink">
+              Notes (optional)
+            </label>
+            <Input
+              id="editNotes"
+              value={editNotes}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditNotes(e.target.value)}
+              placeholder="e.g. Core broad market equity"
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={editHoldingSubmitting}>
+              {editHoldingSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditingHoldingId(null)}
             >
               Cancel
             </Button>
@@ -543,6 +717,13 @@ export function HoldingsManager({
                       >
                         Trend
                       </Link>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => startEditingHolding(h)}
+                      >
+                        Edit
+                      </Button>
                       <Button
                         type="button"
                         variant="secondary"
