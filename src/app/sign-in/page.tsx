@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThreeDotsMove } from "@/components/ui/three-dots-move";
 import { triggerPageLoader } from "@/components/ui/page-navigation-loader";
 
 export default function SignInPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +31,10 @@ export default function SignInPage() {
         return false;
       }
 
-      // Trigger seamless full-page loader transition and navigate immediately
+      // Trigger seamless full-page loader transition and navigate with client router
       triggerPageLoader();
-      window.location.href = "/dashboard";
+      router.replace("/dashboard");
+      router.refresh();
       return true;
     } catch {
       setError("Couldn't reach the server. Please check your connection and try again.");
