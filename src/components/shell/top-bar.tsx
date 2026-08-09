@@ -1,28 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { WORDMARK } from "./nav-items";
 import { SignOutIcon } from "./nav-icons";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function TopBar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   // Hide top bar on sign-in page
   if (pathname === "/sign-in" || pathname.startsWith("/invite")) {
     return null;
   }
 
-  async function handleSignOut() {
-    try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-      router.push("/sign-in");
-      router.refresh();
-    } catch {
-      window.location.href = "/sign-in";
-    }
+  function handleSignOut() {
+    fetch("/api/auth/sign-out", { method: "POST", keepalive: true }).catch(() => {});
+    window.location.href = "/sign-in";
   }
 
   return (

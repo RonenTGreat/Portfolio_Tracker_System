@@ -17,11 +17,14 @@ import { listQuarters } from "@/server/quarters";
 // that no longer matches the ledger.
 export const dynamic = "force-dynamic";
 
+import { isRedirectError } from "@/server/auth";
+
 export default async function DataEntryPage() {
   let quarters;
   try {
     quarters = await listQuarters();
   } catch (cause) {
+    if (isRedirectError(cause)) throw cause;
     console.error("[data-entry] failed to load quarters", cause);
     return (
       <>

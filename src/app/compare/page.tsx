@@ -20,11 +20,14 @@ export const dynamic = "force-dynamic";
 
 const SUBTITLE = "Any two quarters, side by side.";
 
+import { isRedirectError } from "@/server/auth";
+
 export default async function ComparePage() {
   let options;
   try {
     options = await listQuarterOptions();
   } catch (cause) {
+    if (isRedirectError(cause)) throw cause;
     console.error("[compare] failed to list quarters", cause);
     return (
       <>

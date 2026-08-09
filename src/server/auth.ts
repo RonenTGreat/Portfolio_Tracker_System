@@ -114,6 +114,15 @@ export async function requireSessionUser(): Promise<SessionUser> {
   return user;
 }
 
+/** Check if an error thrown in a Server Component is a Next.js redirect exception. */
+export function isRedirectError(error: unknown): boolean {
+  if (typeof error === "object" && error !== null && "digest" in error) {
+    const digest = (error as { digest?: string }).digest;
+    return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
+  }
+  return false;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Creating and ending sessions                                                */
 /* -------------------------------------------------------------------------- */

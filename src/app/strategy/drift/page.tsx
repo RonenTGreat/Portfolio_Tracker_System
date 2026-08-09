@@ -17,11 +17,14 @@ import { getDrift, listQuarterOptions } from "@/server/compare";
 
 export const dynamic = "force-dynamic";
 
+import { isRedirectError } from "@/server/auth";
+
 export default async function DriftPage() {
   let options;
   try {
     options = await listQuarterOptions();
   } catch (cause) {
+    if (isRedirectError(cause)) throw cause;
     console.error("[drift] failed to list quarters", cause);
     return (
       <ErrorState message="Couldn't load your quarters — check the database connection and reload." />

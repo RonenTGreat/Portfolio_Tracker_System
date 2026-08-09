@@ -18,6 +18,8 @@ export const dynamic = "force-dynamic";
  *  a missed one without turning the list into a date archive. */
 const QUARTERS_OFFERED = 12;
 
+import { isRedirectError } from "@/server/auth";
+
 export default async function NewQuarterPage() {
   let holdings;
   let recorded;
@@ -27,6 +29,7 @@ export default async function NewQuarterPage() {
       listQuarters(),
     ]);
   } catch (cause) {
+    if (isRedirectError(cause)) throw cause;
     console.error("[data-entry/new] failed to load form data", cause);
     return (
       <>

@@ -19,11 +19,14 @@ import { parseISODate, quarterLabel } from "@/lib/quarters";
 
 export const dynamic = "force-dynamic";
 
+import { isRedirectError } from "@/server/auth";
+
 export default async function StrategyPage() {
   let data;
   try {
     data = await getStrategy();
   } catch (cause) {
+    if (isRedirectError(cause)) throw cause;
     console.error("[strategy] failed to load", cause);
     return (
       <ErrorState message="Couldn't load your targets — check the database connection and reload." />

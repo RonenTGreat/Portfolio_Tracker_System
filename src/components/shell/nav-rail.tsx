@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { NAV_ITEMS, WORDMARK } from "./nav-items";
 import { getNavIcon, SignOutIcon, ToggleChevronIcon } from "./nav-icons";
 
@@ -17,7 +17,6 @@ export function NavRail({
   onToggleCollapse?: () => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   if (pathname === "/sign-in" || pathname.startsWith("/invite")) {
     return null;
@@ -27,14 +26,9 @@ export function NavRail({
     (item) => !("adminOnly" in item && item.adminOnly) || isAdmin,
   );
 
-  async function handleSignOut() {
-    try {
-      await fetch("/api/auth/sign-out", { method: "POST" });
-      router.push("/sign-in");
-      router.refresh();
-    } catch {
-      window.location.href = "/sign-in";
-    }
+  function handleSignOut() {
+    fetch("/api/auth/sign-out", { method: "POST", keepalive: true }).catch(() => {});
+    window.location.href = "/sign-in";
   }
 
   return (

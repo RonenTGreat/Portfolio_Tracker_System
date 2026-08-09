@@ -78,11 +78,14 @@ function assetClassKpi(
   };
 }
 
+import { isRedirectError } from "@/server/auth";
+
 export default async function DashboardPage() {
   let data;
   try {
     data = await getDashboard();
   } catch (cause) {
+    if (isRedirectError(cause)) throw cause;
     console.error("[dashboard] failed to load", cause);
     return (
       <>
