@@ -42,6 +42,13 @@ export function HoldingsManager({
   const [bucketError, setBucketError] = useState<string | null>(null);
   const [bucketSubmitting, setBucketSubmitting] = useState(false);
 
+  // Edit Bucket Form state
+  const [editingBucketId, setEditingBucketId] = useState<string | null>(null);
+  const [editBucketName, setEditBucketName] = useState("");
+  const [editColorToken, setEditColorToken] = useState<BucketColorToken>("--color-ink");
+  const [editBucketError, setEditBucketError] = useState<string | null>(null);
+  const [editBucketSubmitting, setEditBucketSubmitting] = useState(false);
+
   async function handleAddHolding(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -110,6 +117,59 @@ export function HoldingsManager({
     }
   }
 
+  function startEditingBucket(b: BucketDTO) {
+    setShowAddForm(false);
+    setShowAddBucketForm(false);
+    setEditingBucketId(b.id);
+    setEditBucketName(b.name);
+    setEditColorToken(b.colorToken as BucketColorToken);
+    setEditBucketError(null);
+  }
+
+  async function handleEditBucket(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingBucketId) return;
+    setEditBucketError(null);
+    setEditBucketSubmitting(true);
+
+    try {
+      const res = await fetch(`/api/buckets/${editingBucketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editBucketName,
+          colorToken: editColorToken,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setEditBucketError(data.error || "Failed to update bucket.");
+      } else {
+        const updatedBucket: BucketDTO = data.bucket;
+        setBuckets((prev) =>
+          prev.map((b) => (b.id === updatedBucket.id ? updatedBucket : b)),
+        );
+        setHoldings((prev) =>
+          prev.map((h) =>
+            h.bucketId === updatedBucket.id
+              ? {
+                  ...h,
+                  bucketName: updatedBucket.name,
+                  bucketColorToken: updatedBucket.colorToken,
+                }
+              : h,
+          ),
+        );
+        setEditingBucketId(null);
+      }
+    } catch {
+      setEditBucketError("Network error updating bucket.");
+    } finally {
+      setEditBucketSubmitting(false);
+    }
+  }
+
   async function toggleArchiveBucket(bucketId: string, currentArchived: boolean) {
     try {
       const res = await fetch(`/api/buckets/${bucketId}`, {
@@ -162,6 +222,7 @@ export function HoldingsManager({
             variant="secondary"
             onClick={() => {
               setShowAddForm(false);
+              setEditingBucketId(null);
               setShowAddBucketForm(!showAddBucketForm);
             }}
           >
@@ -170,6 +231,7 @@ export function HoldingsManager({
           <Button
             onClick={() => {
               setShowAddBucketForm(false);
+              setEditingBucketId(null);
               setShowAddForm(!showAddForm);
             }}
           >
@@ -201,8 +263,17 @@ export function HoldingsManager({
               <span>{b.name}</span>
               <button
                 type="button"
-                onClick={() => toggleArchiveBucket(b.id, b.archived)}
+                onClick={() => startEditingBucket(b)}
                 className="ml-1 inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors cursor-pointer p-0.5"
+                title="Edit bucket name"
+                aria-label={`Edit ${b.name} bucket`}
+              >
+                <EditIcon />
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleArchiveBucket(b.id, b.archived)}
+                className="inline-flex items-center justify-center text-ink-soft hover:text-ink transition-colors cursor-pointer p-0.5"
                 title={b.archived ? "Restore bucket" : "Archive bucket"}
                 aria-label={b.archived ? `Restore ${b.name} bucket` : `Archive ${b.name} bucket`}
               >
@@ -212,6 +283,75 @@ export function HoldingsManager({
           ))}
         </div>
       </div>
+
+      {/* Edit Bucket Form */}
+      {editingBucketId && (
+        <form onSubmit={handleEditBucket} className="border border-rule bg-paper-raised p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="type-display-md text-ink m-0">Edit Reporting Bucket</h3>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditingBucketId(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+          {editBucketError && (
+            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+              {editBucketError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="editBucketName" className="type-body-sm block mb-1 font-medium text-ink">
+                Bucket Name
+              </label>
+              <Input
+                id="editBucketName"
+                required
+                value={editBucketName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBucketName(e.target.value)}
+                placeholder="e.g. Real Estate"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="editColorToken" className="type-body-sm block mb-1 font-medium text-ink">
+                Color Theme
+              </label>
+              <select
+                id="editColorToken"
+                value={editColorToken}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setEditColorToken(e.target.value as BucketColorToken)
+                }
+                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+              >
+                {BUCKET_COLOR_TOKENS.map((token) => (
+                  <option key={token} value={token}>
+                    {BUCKET_COLOR_LABELS[token]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={editBucketSubmitting}>
+              {editBucketSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditingBucketId(null)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
 
       {/* Add Bucket Form */}
       {showAddBucketForm && (
@@ -423,6 +563,25 @@ export function HoldingsManager({
 
 /* §1.5 — stroke-width 1.5, single weight, currentColor so the button's own
    hover colour drives them. */
+
+function EditIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
 
 function ArchiveIcon() {
   return (

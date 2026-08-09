@@ -237,7 +237,7 @@ export async function updateBucket(
 ): Promise<BucketDTO> {
   const userId = userIdParam ?? (await requireSessionUser()).id;
   const row = await db.bucket.update({
-    where: { id, userId_name: undefined },
+    where: { id },
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.colorToken !== undefined && { colorToken: input.colorToken }),
