@@ -295,7 +295,7 @@ export function HoldingsManager({
               setShowAddBucketForm(!showAddBucketForm);
             }}
           >
-            {showAddBucketForm ? "Cancel Bucket" : "Add Bucket"}
+            {showAddBucketForm ? "Cancel" : "Add Bucket"}
           </Button>
           <Button
             onClick={() => {
@@ -305,7 +305,7 @@ export function HoldingsManager({
               setShowAddForm(!showAddForm);
             }}
           >
-            {showAddForm ? "Cancel Holding" : "Add Holding"}
+            {showAddForm ? "Cancel" : "Add Holding"}
           </Button>
         </div>
       </div>
