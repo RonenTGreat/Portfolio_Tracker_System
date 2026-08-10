@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,14 @@ export function HoldingsManager({
   const [editNotes, setEditNotes] = useState("");
   const [editHoldingError, setEditHoldingError] = useState<string | null>(null);
   const [editHoldingSubmitting, setEditHoldingSubmitting] = useState(false);
+
+  const formRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showAddForm || showAddBucketForm || editingBucketId || editingHoldingId) {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [showAddForm, showAddBucketForm, editingBucketId, editingHoldingId]);
 
   async function handleAddHolding(e: React.FormEvent) {
     e.preventDefault();
@@ -346,331 +354,334 @@ export function HoldingsManager({
         </div>
       </div>
 
-      {/* Edit Bucket Form */}
-      {editingBucketId && (
-        <form onSubmit={handleEditBucket} className="border border-rule bg-paper-raised p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="type-display-md text-ink m-0">Edit Reporting Bucket</h3>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditingBucketId(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-          {editBucketError && (
-            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
-              {editBucketError}
+      {/* Form Container with Scroll Target */}
+      <div ref={formRef} className="scroll-mt-6">
+        {/* Edit Bucket Form */}
+        {editingBucketId && (
+          <form onSubmit={handleEditBucket} className="border border-rule bg-paper-raised p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="type-display-md text-ink m-0">Edit Reporting Bucket</h3>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingBucketId(null)}
+              >
+                Cancel
+              </Button>
             </div>
-          )}
+            {editBucketError && (
+              <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+                {editBucketError}
+              </div>
+            )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="editBucketName" className="type-body-sm block mb-1 font-medium text-ink">
+                  Bucket Name
+                </label>
+                <Input
+                  id="editBucketName"
+                  required
+                  value={editBucketName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBucketName(e.target.value)}
+                  placeholder="e.g. Real Estate"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label htmlFor="editColorToken" className="type-body-sm block mb-1 font-medium text-ink">
+                  Color Theme
+                </label>
+                <select
+                  id="editColorToken"
+                  value={editColorToken}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setEditColorToken(e.target.value as BucketColorToken)
+                  }
+                  className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+                >
+                  {BUCKET_COLOR_TOKENS.map((token) => (
+                    <option key={token} value={token}>
+                      {BUCKET_COLOR_LABELS[token]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={editBucketSubmitting}>
+                {editBucketSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingBucketId(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Edit Holding Form */}
+        {editingHoldingId && (
+          <form onSubmit={handleEditHolding} className="border border-rule bg-paper-raised p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="type-display-md text-ink m-0">Edit Holding</h3>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingHoldingId(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+            {editHoldingError && (
+              <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+                {editHoldingError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="editTicker" className="type-body-sm block mb-1 font-medium text-ink">
+                  Ticker / Symbol
+                </label>
+                <Input
+                  id="editTicker"
+                  required
+                  value={editTicker}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTicker(e.target.value)}
+                  placeholder="e.g. VOO"
+                  className="w-full font-mono"
+                />
+              </div>
+              <div>
+                <label htmlFor="editDisplayName" className="type-body-sm block mb-1 font-medium text-ink">
+                  Display Name
+                </label>
+                <Input
+                  id="editDisplayName"
+                  required
+                  value={editDisplayName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDisplayName(e.target.value)}
+                  placeholder="e.g. Vanguard S&P 500 ETF"
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="editAssetClass" className="type-body-sm block mb-1 font-medium text-ink">
+                  Asset Class
+                </label>
+                <select
+                  id="editAssetClass"
+                  value={editAssetClass}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditAssetClass(e.target.value as AssetClass)}
+                  className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+                >
+                  <option value="ETF">ETF</option>
+                  <option value="MUTUAL_FUND">Mutual Fund</option>
+                  <option value="CRYPTO">Crypto</option>
+                  <option value="CASH_SAFETY">Cash & Safety</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="editHoldingBucketId" className="type-body-sm block mb-1 font-medium text-ink">
+                  Reporting Bucket
+                </label>
+                <select
+                  id="editHoldingBucketId"
+                  value={editHoldingBucketId || activeBuckets[0]?.id}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditHoldingBucketId(e.target.value)}
+                  className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+                >
+                  {activeBuckets.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="editBucketName" className="type-body-sm block mb-1 font-medium text-ink">
-                Bucket Name
+              <label htmlFor="editNotes" className="type-body-sm block mb-1 font-medium text-ink">
+                Notes (optional)
               </label>
               <Input
-                id="editBucketName"
-                required
-                value={editBucketName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditBucketName(e.target.value)}
-                placeholder="e.g. Real Estate"
+                id="editNotes"
+                value={editNotes}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditNotes(e.target.value)}
+                placeholder="e.g. Core broad market equity"
                 className="w-full"
               />
             </div>
-            <div>
-              <label htmlFor="editColorToken" className="type-body-sm block mb-1 font-medium text-ink">
-                Color Theme
-              </label>
-              <select
-                id="editColorToken"
-                value={editColorToken}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setEditColorToken(e.target.value as BucketColorToken)
-                }
-                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={editHoldingSubmitting}>
+                {editHoldingSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingHoldingId(null)}
               >
-                {BUCKET_COLOR_TOKENS.map((token) => (
-                  <option key={token} value={token}>
-                    {BUCKET_COLOR_LABELS[token]}
-                  </option>
-                ))}
-              </select>
+                Cancel
+              </Button>
             </div>
-          </div>
+          </form>
+        )}
 
-          <div className="flex items-center gap-3">
-            <Button type="submit" disabled={editBucketSubmitting}>
-              {editBucketSubmitting ? "Saving..." : "Save Changes"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditingBucketId(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
+        {/* Add Bucket Form */}
+        {showAddBucketForm && (
+          <form onSubmit={handleAddBucket} className="border border-rule bg-paper-raised p-6 space-y-4">
+            <h3 className="type-display-md text-ink m-0 mb-2">New Reporting Bucket</h3>
+            {bucketError && (
+              <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+                {bucketError}
+              </div>
+            )}
 
-      {/* Edit Holding Form */}
-      {editingHoldingId && (
-        <form onSubmit={handleEditHolding} className="border border-rule bg-paper-raised p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="type-display-md text-ink m-0">Edit Holding</h3>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditingHoldingId(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-          {editHoldingError && (
-            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
-              {editHoldingError}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="bucketName" className="type-body-sm block mb-1 font-medium text-ink">
+                  Bucket Name
+                </label>
+                <Input
+                  id="bucketName"
+                  required
+                  value={bucketName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBucketName(e.target.value)}
+                  placeholder="e.g. Real Estate"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label htmlFor="colorToken" className="type-body-sm block mb-1 font-medium text-ink">
+                  Color Theme
+                </label>
+                <select
+                  id="colorToken"
+                  value={colorToken}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    setColorToken(e.target.value as BucketColorToken)
+                  }
+                  className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+                >
+                  {BUCKET_COLOR_TOKENS.map((token) => (
+                    <option key={token} value={token}>
+                      {BUCKET_COLOR_LABELS[token]}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-          )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Button type="submit" disabled={bucketSubmitting}>
+              {bucketSubmitting ? "Saving..." : "Save Bucket"}
+            </Button>
+          </form>
+        )}
+
+        {/* Add Holding Form */}
+        {showAddForm && (
+          <form onSubmit={handleAddHolding} className="border border-rule bg-paper-raised p-6 space-y-4">
+            <h3 className="type-display-md text-ink m-0 mb-2">New Holding</h3>
+            {error && (
+              <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="ticker" className="type-body-sm block mb-1 font-medium text-ink">
+                  Ticker / Symbol
+                </label>
+                <Input
+                  id="ticker"
+                  required
+                  value={ticker}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTicker(e.target.value)}
+                  placeholder="e.g. VOO"
+                  className="w-full font-mono"
+                />
+              </div>
+              <div>
+                <label htmlFor="displayName" className="type-body-sm block mb-1 font-medium text-ink">
+                  Display Name
+                </label>
+                <Input
+                  id="displayName"
+                  required
+                  value={displayName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
+                  placeholder="e.g. Vanguard S&P 500 ETF"
+                  className="w-full"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="assetClass" className="type-body-sm block mb-1 font-medium text-ink">
+                  Asset Class
+                </label>
+                <select
+                  id="assetClass"
+                  value={assetClass}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAssetClass(e.target.value as AssetClass)}
+                  className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+                >
+                  <option value="ETF">ETF</option>
+                  <option value="MUTUAL_FUND">Mutual Fund</option>
+                  <option value="CRYPTO">Crypto</option>
+                  <option value="CASH_SAFETY">Cash & Safety</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="bucketId" className="type-body-sm block mb-1 font-medium text-ink">
+                  Reporting Bucket
+                </label>
+                <select
+                  id="bucketId"
+                  value={bucketId || activeBuckets[0]?.id}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBucketId(e.target.value)}
+                  className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
+                >
+                  {activeBuckets.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
-              <label htmlFor="editTicker" className="type-body-sm block mb-1 font-medium text-ink">
-                Ticker / Symbol
+              <label htmlFor="notes" className="type-body-sm block mb-1 font-medium text-ink">
+                Notes (optional)
               </label>
               <Input
-                id="editTicker"
-                required
-                value={editTicker}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditTicker(e.target.value)}
-                placeholder="e.g. VOO"
-                className="w-full font-mono"
-              />
-            </div>
-            <div>
-              <label htmlFor="editDisplayName" className="type-body-sm block mb-1 font-medium text-ink">
-                Display Name
-              </label>
-              <Input
-                id="editDisplayName"
-                required
-                value={editDisplayName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditDisplayName(e.target.value)}
-                placeholder="e.g. Vanguard S&P 500 ETF"
+                id="notes"
+                value={notes}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
+                placeholder="e.g. Core broad market equity"
                 className="w-full"
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="editAssetClass" className="type-body-sm block mb-1 font-medium text-ink">
-                Asset Class
-              </label>
-              <select
-                id="editAssetClass"
-                value={editAssetClass}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditAssetClass(e.target.value as AssetClass)}
-                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
-              >
-                <option value="ETF">ETF</option>
-                <option value="MUTUAL_FUND">Mutual Fund</option>
-                <option value="CRYPTO">Crypto</option>
-                <option value="CASH_SAFETY">Cash & Safety</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="editHoldingBucketId" className="type-body-sm block mb-1 font-medium text-ink">
-                Reporting Bucket
-              </label>
-              <select
-                id="editHoldingBucketId"
-                value={editHoldingBucketId || activeBuckets[0]?.id}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditHoldingBucketId(e.target.value)}
-                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
-              >
-                {activeBuckets.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="editNotes" className="type-body-sm block mb-1 font-medium text-ink">
-              Notes (optional)
-            </label>
-            <Input
-              id="editNotes"
-              value={editNotes}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditNotes(e.target.value)}
-              placeholder="e.g. Core broad market equity"
-              className="w-full"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" disabled={editHoldingSubmitting}>
-              {editHoldingSubmitting ? "Saving..." : "Save Changes"}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Saving..." : "Save Holding"}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditingHoldingId(null)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {/* Add Bucket Form */}
-      {showAddBucketForm && (
-        <form onSubmit={handleAddBucket} className="border border-rule bg-paper-raised p-6 space-y-4">
-          <h3 className="type-display-md text-ink m-0 mb-2">New Reporting Bucket</h3>
-          {bucketError && (
-            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
-              {bucketError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="bucketName" className="type-body-sm block mb-1 font-medium text-ink">
-                Bucket Name
-              </label>
-              <Input
-                id="bucketName"
-                required
-                value={bucketName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBucketName(e.target.value)}
-                placeholder="e.g. Real Estate"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label htmlFor="colorToken" className="type-body-sm block mb-1 font-medium text-ink">
-                Color Theme
-              </label>
-              <select
-                id="colorToken"
-                value={colorToken}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  setColorToken(e.target.value as BucketColorToken)
-                }
-                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
-              >
-                {BUCKET_COLOR_TOKENS.map((token) => (
-                  <option key={token} value={token}>
-                    {BUCKET_COLOR_LABELS[token]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <Button type="submit" disabled={bucketSubmitting}>
-            {bucketSubmitting ? "Saving..." : "Save Bucket"}
-          </Button>
-        </form>
-      )}
-
-      {/* Add Holding Form */}
-      {showAddForm && (
-        <form onSubmit={handleAddHolding} className="border border-rule bg-paper-raised p-6 space-y-4">
-          <h3 className="type-display-md text-ink m-0 mb-2">New Holding</h3>
-          {error && (
-            <div role="alert" className="type-body-sm border-l-[3px] border-ledger-red bg-paper p-3 text-ledger-red">
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="ticker" className="type-body-sm block mb-1 font-medium text-ink">
-                Ticker / Symbol
-              </label>
-              <Input
-                id="ticker"
-                required
-                value={ticker}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTicker(e.target.value)}
-                placeholder="e.g. VOO"
-                className="w-full font-mono"
-              />
-            </div>
-            <div>
-              <label htmlFor="displayName" className="type-body-sm block mb-1 font-medium text-ink">
-                Display Name
-              </label>
-              <Input
-                id="displayName"
-                required
-                value={displayName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value)}
-                placeholder="e.g. Vanguard S&P 500 ETF"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor="assetClass" className="type-body-sm block mb-1 font-medium text-ink">
-                Asset Class
-              </label>
-              <select
-                id="assetClass"
-                value={assetClass}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setAssetClass(e.target.value as AssetClass)}
-                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
-              >
-                <option value="ETF">ETF</option>
-                <option value="MUTUAL_FUND">Mutual Fund</option>
-                <option value="CRYPTO">Crypto</option>
-                <option value="CASH_SAFETY">Cash & Safety</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="bucketId" className="type-body-sm block mb-1 font-medium text-ink">
-                Reporting Bucket
-              </label>
-              <select
-                id="bucketId"
-                value={bucketId || activeBuckets[0]?.id}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setBucketId(e.target.value)}
-                className="w-full border border-rule bg-paper px-3 py-2 text-ink focus-visible:outline-2 focus-visible:outline-slate"
-              >
-                {activeBuckets.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="notes" className="type-body-sm block mb-1 font-medium text-ink">
-              Notes (optional)
-            </label>
-            <Input
-              id="notes"
-              value={notes}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNotes(e.target.value)}
-              placeholder="e.g. Core broad market equity"
-              className="w-full"
-            />
-          </div>
-
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : "Save Holding"}
-          </Button>
-        </form>
-      )}
+          </form>
+        )}
+      </div>
 
       {/* Holdings Table */}
       <div className="overflow-x-auto border border-rule bg-paper-raised">
