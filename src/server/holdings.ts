@@ -7,6 +7,7 @@
  * them for any other client.
  */
 
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { requireSessionUser } from "@/server/auth";
 import type { AssetClass } from "@/generated/prisma/enums";
@@ -95,8 +96,12 @@ function toHoldingDTO(row: HoldingRow): HoldingDTO {
 
 /**
  * Every holding for the user, including retired and aggregate ones.
+ *
+ * Wrapped in React `cache()` so that within a single server render,
+ * multiple callers (e.g. strategy page + nested getDashboard) share
+ * the same DB query result.
  */
-export async function listAllHoldings(userIdParam?: string): Promise<HoldingDTO[]> {
+export const listAllHoldings = cache(async (userIdParam?: string): Promise<HoldingDTO[]> => {
   const userId = userIdParam ?? (await requireSessionUser()).id;
   const rows = await db.holding.findMany({
     where: { userId },
@@ -104,7 +109,7 @@ export async function listAllHoldings(userIdParam?: string): Promise<HoldingDTO[
     orderBy: [...HOLDING_ORDER],
   });
   return rows.map(toHoldingDTO);
-}
+});
 
 /**
  * The holdings the FR-1 entry form offers: active, and never the aggregates.
@@ -136,10 +141,10 @@ export async function findHoldingByTicker(
   return db.holding.findFirst({ where: { userId, ticker }, select: { id: true } });
 }
 
-export async function listBuckets(
+export const listBuckets = cache(async (
   options: { includeArchived?: boolean } = {},
   userIdParam?: string,
-): Promise<BucketDTO[]> {
+): Promise<BucketDTO[]> => {
   const userId = userIdParam ?? (await requireSessionUser()).id;
   const rows = await db.bucket.findMany({
     where: {
@@ -163,7 +168,7 @@ export async function listBuckets(
     sortOrder: row.sortOrder,
     archived: row.archivedAt !== null,
   }));
-}
+});
 
 export async function findBucketByName(
   name: string,
@@ -325,6 +330,9 @@ export interface HoldingTrendDTO {
 
 /**
  * Single holding value over time — FR-5.
+ *
+ * Uses `include` to fetch the holding and its entries in a single DB round
+ * trip rather than two sequential queries.
  */
 export async function getHoldingHistory(
   ticker: string,
@@ -333,18 +341,18 @@ export async function getHoldingHistory(
   const userId = userIdParam ?? (await requireSessionUser()).id;
   const holdingRow = await db.holding.findFirst({
     where: { userId, ticker },
-    select: holdingSelect,
+    select: {
+      ...holdingSelect,
+      entries: {
+        orderBy: { quarterDate: "asc" },
+        select: { quarterDate: true, valueGHS: true },
+      },
+    },
   });
 
   if (!holdingRow) return null;
 
-  const entries = await db.quarterEntry.findMany({
-    where: { holdingId: holdingRow.id },
-    orderBy: { quarterDate: "asc" },
-    select: { quarterDate: true, valueGHS: true },
-  });
-
-  const series = entries.map((e) => ({
+  const series = holdingRow.entries.map((e) => ({
     quarterDate: e.quarterDate.toISOString().slice(0, 10),
     valueGHS: e.valueGHS.toString(),
   }));

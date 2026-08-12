@@ -12,6 +12,7 @@
  * A leaked database snapshot should not hand over usable live sessions.
  */
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
@@ -73,7 +74,7 @@ export interface SessionUser {
  * Expiry is filtered here too rather than relying on a cleanup job, so a session
  * past its date is dead the moment it is next used even if nothing has swept it.
  */
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
 
@@ -97,7 +98,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   });
 
   return session?.user ?? null;
-}
+});
 
 /** True when a signed-in Admin is present. */
 export async function getAdminUser(): Promise<SessionUser | null> {

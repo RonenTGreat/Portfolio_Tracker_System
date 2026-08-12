@@ -179,24 +179,6 @@ function snapshot(
   };
 }
 
-async function effectiveBucketTargets(
-  date: Date,
-  userId: string,
-): Promise<Map<string, number>> {
-  const rows = await db.targetAllocation.findMany({
-    where: { userId, bucketId: { not: null }, effectiveFrom: { lte: date } },
-    select: { bucketId: true, targetPct: true, effectiveFrom: true },
-    orderBy: { effectiveFrom: "desc" },
-  });
-
-  const latest = new Map<string, number>();
-  for (const row of rows) {
-    if (row.bucketId && !latest.has(row.bucketId)) {
-      latest.set(row.bucketId, Number(row.targetPct.toString()));
-    }
-  }
-  return latest;
-}
 
 function sideFrom(
   snap: QuarterSnapshot,
@@ -393,7 +375,14 @@ export async function getDrift(isoDate: string, userIdParam?: string): Promise<D
   }
 
   const selectedDate = parseISODate(isoDate);
-  const targets = await effectiveBucketTargets(selectedDate, userId);
+
+  // Derive effective targets from the already-fetched targetRows in memory
+  // rather than issuing a redundant DB query via effectiveBucketTargets().
+  const targets = new Map<string, number>();
+  for (const bucketId of bucketMeta.keys()) {
+    const pct = targetOn(bucketId, selectedDate);
+    if (pct !== null) targets.set(bucketId, pct);
+  }
 
   const rowBucketIds = new Set([
     ...selected.byBucket.keys(),

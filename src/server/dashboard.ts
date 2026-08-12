@@ -179,7 +179,15 @@ export async function getDashboard(userIdParam?: string): Promise<DashboardDTO> 
   const latestDate = toISODate(latestRow.quarterDate);
   const latestTotal = totalSeries[totalSeries.length - 1].totalGHS;
 
-  const targets = await effectiveBucketTargets(parseISODate(latestDate), userId);
+  // Both queries depend only on latestDate + userId, so run them in parallel
+  // rather than sequentially — saves one DB round trip.
+  const [targets, userBuckets] = await Promise.all([
+    effectiveBucketTargets(parseISODate(latestDate), userId),
+    db.bucket.findMany({
+      where: { userId, archivedAt: null },
+      select: { id: true, holdings: { select: { assetClass: true } } },
+    }),
+  ]);
 
   // Roll the latest quarter's entries up per bucket
   const bucketAcc = new Map<
@@ -274,11 +282,6 @@ export async function getDashboard(userIdParam?: string): Promise<DashboardDTO> 
     }
     acc.values.push(value);
   }
-
-  const userBuckets = await db.bucket.findMany({
-    where: { userId, archivedAt: null },
-    select: { id: true, holdings: { select: { assetClass: true } } },
-  });
 
   for (const bucket of userBuckets) {
     const classes = new Set(bucket.holdings.map((h) => h.assetClass));

@@ -1,12 +1,23 @@
 import Link from "next/link";
+import nextDynamic from "next/dynamic";
 import { PageHeader, Section, AsOfCaption } from "@/components/ui/page-header";
 import { KpiCard, KpiRow } from "@/components/ui/kpi-card";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { TotalValueChart } from "@/components/charts/total-value-chart";
-import { CompositionChart } from "@/components/charts/composition-chart";
-import { AllocationPie } from "@/components/charts/allocation-pie";
-import { TargetBarChart } from "@/components/charts/target-bar-chart";
+// Below-fold charts: lazy-loaded to reduce initial JS bundle (~200KB Recharts).
+const CompositionChart = nextDynamic(
+  () => import("@/components/charts/composition-chart").then((m) => m.CompositionChart),
+  { ssr: true },
+);
+const AllocationPie = nextDynamic(
+  () => import("@/components/charts/allocation-pie").then((m) => m.AllocationPie),
+  { ssr: true },
+);
+const TargetBarChart = nextDynamic(
+  () => import("@/components/charts/target-bar-chart").then((m) => m.TargetBarChart),
+  { ssr: true },
+);
 import { VarianceTable } from "@/components/dashboard/variance-table";
 import { getDashboard, type AssetClassKpiDTO } from "@/server/dashboard";
 import { ASSET_CLASS_LABELS } from "@/lib/asset-classes";
